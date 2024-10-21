@@ -21,7 +21,6 @@ namespace PassportService.Controllers
             _dbContext = dbContext;
         }
 
-
         [HttpGet("GetPassportsFromFileAndAddPassportDb")]
         public async Task<IActionResult> GetPassportsFromFile()
         {
@@ -37,6 +36,7 @@ namespace PassportService.Controllers
             _dbContext.Passports.RemoveRange(passports);
             await _dbContext.SaveChangesAsync();
         }
+
         [HttpDelete("ClearDatabaseReset")]
         public async Task ResetDatabaseAsync()
         {

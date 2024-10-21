@@ -71,25 +71,38 @@ namespace PassportService.Service
             return exists;
         }
 
-        public void UpdatePassport(Passport passport)
+        public Task UpdatePassport(Passport passport)
         {
             _dbContext.Update(passport);
-        }
-
-        public Task AddPasssporsAsync(List<Passport> passports)
-        {
-            return _dbContext.Passports.AddRangeAsync(passports);
-        }
-
-        public Task SaveChangeDbAsync()
-        {
             return _dbContext.SaveChangesAsync();
         }
+
+        public async Task AddPasssporsAsync(List<Passport> passports)
+        {
+            await _dbContext.Passports.AddRangeAsync(passports);
+            await _dbContext.SaveChangesAsync();
+        }      
 
         public Task<List<Passport>> SerchDeletePassports()
         {
             return _dbContext.Passports
                      .Where(passport => !passport.DateLastRequest.Date.Equals(today.Date)).ToListAsync();
+        }
+
+        public async Task UpdateDeletedPassportAsync()
+        {          
+            var passportsToDelete = await SerchDeletePassports();
+
+            foreach(var passportWasDelete in passportsToDelete)
+            {
+                if(passportWasDelete.RemovedAt == null)
+                {
+                    passportWasDelete.RemovedAt = new List<DateTime?>();
+                }
+                // Добавляем текущую дату в коллекцию
+                passportWasDelete.RemovedAt.Add(today);
+            }
+            await _dbContext.SaveChangesAsync();
         }
     }
 }

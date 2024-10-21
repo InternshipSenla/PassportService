@@ -6,7 +6,6 @@ namespace PassportService.Service
     {
         public string PathToUnpackCSVFile();
         public Task LoadPassportsFromCsvAsync();
-        public Task AddPassportsIfNotExistsAsync(IEnumerable<Passport> newPassports);
-        public Task UpdateDeletedPassportAsync();
+        public Task AddPassportsIfNotExistsAsync(IEnumerable<Passport> newPassports);    
     }
 }

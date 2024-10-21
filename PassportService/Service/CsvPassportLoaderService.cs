@@ -10,19 +10,17 @@ namespace PassportService.Service
 {
     public class CsvPassportLoaderService :ICsvPassportLoaderRepository
     {
-        private DateTime today = DateTime.UtcNow;        
-        private PassportDbContext _dbContext;
+        private DateTime today = DateTime.UtcNow;  
         private readonly ILogger<PassportService> _logger;
         IConfiguration _configuration;
         IPassportRepository _passportService;
 
-        public CsvPassportLoaderService(IPassportRepository passportService , IConfiguration configuration, PassportDbContext dbContext, ILogger<PassportService> logger)
+        public CsvPassportLoaderService(IPassportRepository passportService , IConfiguration configuration, ILogger<PassportService> logger)
         {
             _passportService = passportService;
-            _configuration = configuration;
-            _dbContext = dbContext;
+            _configuration = configuration;    
             _logger = logger;
-        }
+        }            
 
         public string PathToUnpackCSVFile()
         {
@@ -102,7 +100,7 @@ namespace PassportService.Service
                 await AddPassportsIfNotExistsAsync(batch);
             }
             //проверяем удаленные записи
-            await UpdateDeletedPassportAsync();
+            await _passportService.UpdateDeletedPassportAsync();
         }
 
         public async Task AddPassportsIfNotExistsAsync(IEnumerable<Passport> newPassports)
@@ -118,35 +116,14 @@ namespace PassportService.Service
                 }
                 else
                 {
-                    exists.DateLastRequest = passport.DateLastRequest; // Например, обновляем поля CreatedAt и RemovedAt                
-                    _passportService.UpdatePassport(exists);// Обновляем объект в контексте                  
+                    exists.DateLastRequest = passport.DateLastRequest; // Обновляем поля CreatedAt и RemovedAt                
+                    await _passportService.UpdatePassport(exists);// Обновляем объект в контексте                  
                 }
             }
             if(passportsToAdd.Any())
             {
                 await _passportService.AddPasssporsAsync(passportsToAdd);
             }
-            // Сохраняем изменения в БД
-            await _passportService.SaveChangeDbAsync();
-        }
-
-        public async Task UpdateDeletedPassportAsync()
-        {
-            //вот тут вопрос
-            //var passportsToDelete = await _dbContext.Passports
-            //         .Where(passport => !passport.DateLastRequest.Date.Equals(today.Date)).ToListAsync();
-            var passportsToDelete = await _passportService.SerchDeletePassports();
-
-            foreach(var passportWasDelete in passportsToDelete)
-            {
-                if(passportWasDelete.RemovedAt == null)
-                {
-                    passportWasDelete.RemovedAt = new List<DateTime?>();
-                }
-                // Добавляем текущую дату в коллекцию
-                passportWasDelete.RemovedAt.Add(today);
-            }
-            await _passportService.SaveChangeDbAsync();
-        }
+        }  
     }
 }

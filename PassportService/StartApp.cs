@@ -12,6 +12,7 @@ namespace PassportService
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.AddScoped<IPassportRepository, PassportService.Service.PassportService>();
             builder.Services.AddScoped<ICsvPassportLoaderRepository, PassportService.Service.CsvPassportLoaderService>();
+            builder.Services.AddHostedService<PassportUpdateService>();
         }
     }
 }
