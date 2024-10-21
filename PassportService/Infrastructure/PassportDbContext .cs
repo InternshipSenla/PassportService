@@ -44,7 +44,5 @@ namespace PassportService.Infrastructure
                 new Passport { Id = 8, Series = "8901", Number = "234567", CreatedAt = new List<DateTime> { DateTime.SpecifyKind(new DateTime(2019, 9, 15), DateTimeKind.Utc) }, RemovedAt = null,  DateLastRequest = DateTime.UtcNow.AddDays(-2) }
             };
         }
-
     }
-
 }

@@ -1,24 +1,18 @@
-﻿using CsvHelper;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PassportService.Core;
 using PassportService.Infrastructure;
-using System.Globalization;
-using System.IO.Compression;
 
 namespace PassportService.Service
 {
     public class PassportService :IPassportRepository
     {
-
         private DateTime today = DateTime.UtcNow;
-        DbContextOptions<PassportDbContext> _option;
         IConfiguration _configuration;
         private PassportDbContext _dbContext;
         private readonly ILogger<PassportService> _logger;
 
-        public PassportService(DbContextOptions<PassportDbContext> option, IConfiguration configuration, PassportDbContext dbContext, ILogger<PassportService> logger)
+        public PassportService(IConfiguration configuration, PassportDbContext dbContext, ILogger<PassportService> logger)
         {
-            _option = option;
             _configuration = configuration;
             _dbContext = dbContext;
             _logger = logger;
@@ -59,122 +53,43 @@ namespace PassportService.Service
                   .ToListAsync();
         }
 
-        public async Task LoadPassportsFromCsvAsync()
+        public async Task<List<Passport>> GetPassportsByDate(DateTime date)
         {
-            var passports = new List<Passport>();
-            string pathToZipFile = _configuration.GetConnectionString("CSVFilePath");
-            string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
-            string pathToCSVFile = "";
-            // pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv").FirstOrDefault();
-            try
-            {
-                if(!File.Exists(pathToZipFile))
-                {
-                    throw new FileNotFoundException("ZIP-файл не найден.", pathToZipFile);
-                }
-
-                if(!Directory.Exists(pathToCSVFolder))
-                {
-                    Directory.CreateDirectory(pathToCSVFolder);
-                }
-
-                ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
-                pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv").FirstOrDefault();
-                if(string.IsNullOrEmpty(pathToCSVFile))
-                {
-                    throw new FileNotFoundException("CSV-файл не найден в распакованной папке.", pathToCSVFolder);
-                }
-            }
-            catch(InvalidDataException ex)
-            {
-                _logger.LogError($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
-                throw;
-            }
-            catch(IOException ex)
-            {
-                _logger.LogError($"Ошибка ввода-вывода: {ex.Message}");
-                throw;
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError($"Общая ошибка при разархивации: {ex.Message}");
-                throw;
-            }
-
-            const int batchSize = 1000; // Размер партии для добавления в БД
-            var batch = new List<Passport>(batchSize);
-
-            using(var reader = new StreamReader(pathToCSVFile))
-            using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
-            {
-                await foreach(var record in csv.GetRecordsAsync<PassportCsvRecord>())
-                {
-                    var passport = new Passport
-                    {
-                        Series = record.PASSP_SERIES,
-                        Number = record.PASSP_NUMBER,
-                        CreatedAt = new List<DateTime> { today },
-                        DateLastRequest = today
-                    };
-                    batch.Add(passport);
-
-                    // Добавляем записи в БД
-                    if(batch.Count >= batchSize)
-                    {
-                        await AddPassportsIfNotExistsAsync(batch);
-                        batch.Clear();
-                    }
-                }
-            }
-            // Добавляем оставшиеся записи, если они есть
-            if(batch.Count > 0)
-            {
-                await AddPassportsIfNotExistsAsync(batch);
-            }
-            //проверяем удаленные записи
-            await UpdateDeletedPassportAsync();
+            var passportsByDate = await _dbContext.Passports
+              .Where(passport =>
+                        passport.CreatedAt.Any(createdDate => createdDate.Date == date.Date)
+                        ||
+                        (passport.RemovedAt != null && passport.RemovedAt.Any(removedDate => removedDate.HasValue && removedDate.Value.Date == date.Date)))
+              .ToListAsync();
+            return passportsByDate;
         }
 
-        public async Task AddPassportsIfNotExistsAsync(IEnumerable<Passport> newPassports)
+        public async Task<Passport> GetPassportAsync(Passport passport)
         {
-            var passportsToAdd = new List<Passport>();
-            foreach(var passport in newPassports)
-            {
-                // Проверяем, существует ли паспорт в БД     
-                var exists = await _dbContext.Passports
-                     .Where(existing => existing.Series == passport.Series && existing.Number == passport.Number).FirstOrDefaultAsync();
-                if(exists == null)
-                {
-                    passportsToAdd.Add(passport);
-                }
-                else
-                {
-                    exists.DateLastRequest = passport.DateLastRequest; // Например, обновляем поля CreatedAt и RemovedAt
-                    _dbContext.Update(exists); // Обновляем объект в контексте
-                }
-            }
-            if(passportsToAdd.Any())
-            {
-                await _dbContext.Passports.AddRangeAsync(passportsToAdd);
-            }
-            // Сохраняем изменения в БД
-            await _dbContext.SaveChangesAsync();
+            var exists = await _dbContext.Passports
+               .Where(existing => existing.Series == passport.Series && existing.Number == passport.Number).FirstOrDefaultAsync();
+            return exists;
         }
 
-        public async Task UpdateDeletedPassportAsync()
+        public void UpdatePassport(Passport passport)
         {
-            var passportsToDelete = await _dbContext.Passports
+            _dbContext.Update(passport);
+        }
+
+        public Task AddPasssporsAsync(List<Passport> passports)
+        {
+            return _dbContext.Passports.AddRangeAsync(passports);
+        }
+
+        public Task SaveChangeDbAsync()
+        {
+            return _dbContext.SaveChangesAsync();
+        }
+
+        public Task<List<Passport>> SerchDeletePassports()
+        {
+            return _dbContext.Passports
                      .Where(passport => !passport.DateLastRequest.Date.Equals(today.Date)).ToListAsync();
-            foreach(var passportWasDelete in passportsToDelete)
-            {
-                if(passportWasDelete.RemovedAt == null)
-                {
-                    passportWasDelete.RemovedAt = new List<DateTime?>();
-                }
-                // Добавляем текущую дату в коллекцию
-                passportWasDelete.RemovedAt.Add(today);
-            }
-            await _dbContext.SaveChangesAsync();
         }
     }
 }

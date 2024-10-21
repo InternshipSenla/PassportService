@@ -25,7 +25,6 @@ namespace PassportService.Controllers
             return Ok(Results.Json(passports));
         }
 
-
         [HttpGet("Series/{Series}")]
         public async Task<IActionResult> GetPassportsBySeries(string Series)
         {
@@ -47,7 +46,25 @@ namespace PassportService.Controllers
             return Ok(Results.Json(passports));
         }
 
+        [HttpGet("PassportsByDate/{date}")]
+        public async Task<IActionResult> GetPassportsByDate(string date)
+        {
+            if(!DateTime.TryParse(date, out var parsedDate))
+            {
+                throw new ArgumentException("Неверный формат даты.");
+            }
 
+            // Преобразуем дату в UTC
+            DateTime utcDate = DateTime.SpecifyKind(parsedDate, DateTimeKind.Utc);
 
+            List<Passport> passports = await _passportService.GetPassportsByDate(utcDate);
+
+            if(passports == null || passports.Count == 0)
+            {
+                return NotFound(new { Message = "Паспорта не найдены за указанную дату." });
+            }
+
+            return Ok(Results.Json(passports));
+        }
     }
 }

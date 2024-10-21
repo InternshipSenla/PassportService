@@ -11,10 +11,12 @@ namespace PassportService.Controllers
     public class DatabaseController :Controller
     {
         private IPassportRepository _passportService;
+        private ICsvPassportLoaderRepository _cvsPasportService;
         private PassportDbContext _dbContext;
 
-        public DatabaseController(IPassportRepository passportService, PassportDbContext dbContext)
+        public DatabaseController(ICsvPassportLoaderRepository cvsPasportService, IPassportRepository passportService, PassportDbContext dbContext)
         {
+            _cvsPasportService = cvsPasportService;
             _passportService = passportService;
             _dbContext = dbContext;
         }
@@ -23,7 +25,7 @@ namespace PassportService.Controllers
         [HttpGet("GetPassportsFromFileAndAddPassportDb")]
         public async Task<IActionResult> GetPassportsFromFile()
         {
-            await _passportService.LoadPassportsFromCsvAsync();
+            await _cvsPasportService.LoadPassportsFromCsvAsync();
             List<Passport> passports = await _passportService.GetAllPassports();
             return Ok(Results.Json(passports));
         }
