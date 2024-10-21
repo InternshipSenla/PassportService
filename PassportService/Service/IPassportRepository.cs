@@ -4,9 +4,10 @@ namespace PassportService.Service
 {
     public interface IPassportRepository
     {
-        IEnumerable<Passport> GetAllPassports();
-        void AddPassports(IEnumerable<Passport> passports);
-        void RemovePassports(IEnumerable<Passport> passports);
-        void SaveChanges();
+        Task<List<Passport>> GetAllPassports();
+        Task<List<Passport>> GetPassportsBySeries(string Series);
+        Task<List<Passport>> GetPassportsByNumber(string Number);
+        Task<List<Passport>> GetPassportsBySeriesAndNumber(string SeriesAndNumber);
+        Task LoadPassportsFromCsvAsync();
     }
 }

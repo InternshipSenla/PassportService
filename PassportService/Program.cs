@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using PassportService.Infrastructure;
+using PassportService;
 
 internal class Program
 {
@@ -12,14 +10,12 @@ internal class Program
         //     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
         // Add services to the container.
+        StartApp.Start(builder);
 
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
-
-        builder.Services.AddDbContext<PassportDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
         var app = builder.Build();
 
@@ -35,18 +31,6 @@ internal class Program
         app.UseAuthorization();
 
         app.MapControllers();
-        bool firstStart = true;
-        app.MapGet("/", async (PassportDbContext db) =>
-        {            
-                string info = "Данные:\n";
-                var passports = await db.Passports.ToListAsync();
-                foreach(var passport in passports)
-                {
-                
-                    info += String.Format("|{0,-30}|{1,-10}|", passport.Series, passport.Number) + "\n";
-                }
-                return info;            
-        });
 
         app.Run();
     }
