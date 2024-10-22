@@ -4,7 +4,8 @@ namespace PassportService.Service
 {
     public interface ICsvPassportLoaderRepository
     {
-        public string PathToUnpackCSVFile();
+        public void UnpackingCSVFile();
+        public string GetPathToUnpackCSVFile();
         public Task LoadPassportsFromCsvAsync();
         public Task AddPassportsIfNotExistsAsync(IEnumerable<Passport> newPassports);    
     }

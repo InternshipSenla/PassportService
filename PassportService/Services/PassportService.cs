@@ -71,13 +71,13 @@ namespace PassportService.Service
             return exists;
         }
 
-        public Task UpdatePassport(Passport passport)
+        public async Task UpdatePassport(Passport passport)
         {
             _dbContext.Update(passport);
-            return _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
 
-        public async Task AddPasssporsAsync(List<Passport> passports)
+        public async Task AddPassportsAsync(List<Passport> passports)
         {
             await _dbContext.Passports.AddRangeAsync(passports);
             await _dbContext.SaveChangesAsync();

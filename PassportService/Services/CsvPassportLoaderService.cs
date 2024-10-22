@@ -20,14 +20,12 @@ namespace PassportService.Service
             _passportService = passportService;
             _configuration = configuration;    
             _logger = logger;
-        }            
+        }
 
-        public string PathToUnpackCSVFile()
+        public void UnpackingCSVFile()
         {
             string pathToZipFile = _configuration.GetConnectionString("CSVFilePath");
-            string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
-            string pathToCSVFile = "";
-            // pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv").FirstOrDefault();
+            string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");     
             try
             {
                 if(!File.Exists(pathToZipFile))
@@ -40,12 +38,7 @@ namespace PassportService.Service
                     Directory.CreateDirectory(pathToCSVFolder);
                 }
 
-                ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
-                pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv").FirstOrDefault();
-                if(string.IsNullOrEmpty(pathToCSVFile))
-                {
-                    throw new FileNotFoundException("CSV-файл не найден в распакованной папке.", pathToCSVFolder);
-                }
+                ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);       
             }
             catch(InvalidDataException ex)
             {
@@ -61,12 +54,23 @@ namespace PassportService.Service
             {
                 _logger.LogError($"Общая ошибка при разархивации: {ex.Message}");
                 throw;
+            }           
+        }
+        public string GetPathToUnpackCSVFile()
+        {
+            string pathToFolderWhithCSVFile = _configuration.GetConnectionString("CSVFileFolder");
+            string pathToCSVFile = Directory.GetFiles(pathToFolderWhithCSVFile, "*.csv").FirstOrDefault();
+            if(string.IsNullOrEmpty(pathToCSVFile))
+            {
+                throw new FileNotFoundException("CSV-файл не найден в распакованной папке.", pathToFolderWhithCSVFile);
             }
             return pathToCSVFile;
         }
+     
         public async Task LoadPassportsFromCsvAsync()
         {
-            string pathToCSVFile = PathToUnpackCSVFile();
+            UnpackingCSVFile();
+            string pathToCSVFile = GetPathToUnpackCSVFile();
             var passports = new List<Passport>();
 
             const int batchSize = 1000; // Размер партии для добавления в БД
@@ -122,7 +126,7 @@ namespace PassportService.Service
             }
             if(passportsToAdd.Any())
             {
-                await _passportService.AddPasssporsAsync(passportsToAdd);
+                await _passportService.AddPassportsAsync(passportsToAdd);
             }
         }  
     }
