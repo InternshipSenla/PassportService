@@ -6,7 +6,7 @@ namespace PassportService.Service
 {
     public class PassportService :IPassportRepository
     {
-        private DateTime today = DateTime.UtcNow;
+        public DateTime today = DateTime.UtcNow;
         IConfiguration _configuration;
         private PassportDbContext _dbContext;
         private readonly ILogger<PassportService> _logger;
@@ -85,8 +85,16 @@ namespace PassportService.Service
 
         public Task<List<Passport>> SerchDeletePassports()
         {
+            //return _dbContext.Passports
+            //         .Where(passport => !passport.DateLastRequest.Date.Equals(today.Date)).ToListAsync();
+
             return _dbContext.Passports
-                     .Where(passport => !passport.DateLastRequest.Date.Equals(today.Date)).ToListAsync();
+                 .Where(passport =>
+                     !passport.DateLastRequest.Date.Equals(today.Date) &&
+                     (passport.RemovedAt == null ||
+                     passport.RemovedAt.Any() &&
+                     passport.CreatedAt.Max() > passport.RemovedAt.Max()))
+                 .ToListAsync();
         }
 
         public async Task UpdateDeletedPassportAsync()

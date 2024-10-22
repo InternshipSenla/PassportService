@@ -8,7 +8,7 @@ namespace PassportService.Service
 {
     public class CsvPassportLoaderService :ICsvPassportLoaderRepository
     {
-        private DateTime today = DateTime.UtcNow;
+        public DateTime today = DateTime.UtcNow;
         private readonly ILogger<PassportService> _logger;
         IConfiguration _configuration;
         IPassportRepository _passportService;
@@ -122,7 +122,14 @@ namespace PassportService.Service
                 }
                 else
                 {
-                    exists.DateLastRequest = passport.DateLastRequest; // Обновляем поля CreatedAt и RemovedAt                
+                    exists.DateLastRequest = today; // Обновляем дату последнего обнаружения в файле
+                    if(exists.RemovedAt != null && exists.RemovedAt.Any())
+                    {
+                        if(exists.RemovedAt.Max() > exists.CreatedAt.Max()) //если добавили паспорт, который удаляли (дата удаления позже даты создания)
+                        {                                                   //в коллекцию дат Добавления добавляем сегодняюшнюю дату
+                            exists.CreatedAt.Add(today);
+                        }
+                    }
                     await _passportService.UpdatePassport(exists);// Обновляем объект в контексте                  
                 }
             }
