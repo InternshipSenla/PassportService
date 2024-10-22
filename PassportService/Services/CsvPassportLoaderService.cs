@@ -20,18 +20,27 @@ namespace PassportService.Service
             _logger = logger;
         }
 
-        public void UnpackingCSVFile()
+        public string UnpackingCSVFile()
         {
             string pathToZipFile = _configuration.GetConnectionString("CSVFilePath");
             string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
             try
             {   
                 ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
+                //находим наш файл, который был созданы последним
+                string? pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv")
+                                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                                    .FirstOrDefault();
+                if(string.IsNullOrEmpty(pathToCSVFile))
+                {
+                    throw new FileNotFoundException();
+                }
+                return pathToCSVFile;
             }
             catch(FileNotFoundException)
             {
-                _logger.LogError("ZIP-файл не найден.", pathToZipFile);
-                throw new FileNotFoundException("ZIP-файл не найден.", pathToZipFile);
+                _logger.LogError("ZIP-файл или CVS-файл в распакованной папке не найден.", pathToZipFile);
+                throw new FileNotFoundException("ZIP-файл или CVS-файл в распакованной папке не найден.", pathToZipFile);
             }
             catch(InvalidDataException ex)
             {
@@ -51,10 +60,8 @@ namespace PassportService.Service
         }
 
         public async Task LoadPassportsFromCsvAsync()
-        {
-            UnpackingCSVFile();
-            string pathToFolderWhithCSVFile = _configuration.GetConnectionString("CSVFileFolder");
-            string pathToCSVFile = Directory.GetFiles(pathToFolderWhithCSVFile, "*.csv").FirstOrDefault();
+        { 
+            string pathToCSVFile = UnpackingCSVFile();
 
             var passports = new List<Passport>();
             const int batchSize = 1000; // Размер партии для добавления в БД
