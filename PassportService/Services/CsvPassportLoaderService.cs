@@ -25,33 +25,28 @@ namespace PassportService.Service
             string pathToZipFile = _configuration.GetConnectionString("CSVFilePath");
             string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
             try
-            {
-                if(!File.Exists(pathToZipFile))
-                {
-                    throw new FileNotFoundException("ZIP-файл не найден.", pathToZipFile);
-                }
-
-                if(!Directory.Exists(pathToCSVFolder))
-                {
-                    Directory.CreateDirectory(pathToCSVFolder);
-                }
-
+            {   
                 ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
+            }
+            catch(FileNotFoundException)
+            {
+                _logger.LogError("ZIP-файл не найден.", pathToZipFile);
+                throw new FileNotFoundException("ZIP-файл не найден.", pathToZipFile);
             }
             catch(InvalidDataException ex)
             {
-                _logger.LogError($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
-                throw;
+                _logger.LogError($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");              
+                throw new InvalidDataException($"Ошибка: файл не является допустимым ZIP-файлом. { ex.Message }");
             }
             catch(IOException ex)
             {
-                _logger.LogError($"Ошибка ввода-вывода: {ex.Message}");
-                throw;
+                _logger.LogError($"Ошибка ввода-вывода: {ex.Message}");   
+                throw new IOException($"Ошибка ввода-вывода: {ex.Message}");
             }
             catch(Exception ex)
             {
                 _logger.LogError($"Общая ошибка при разархивации: {ex.Message}");
-                throw;
+                throw new Exception($"Общая ошибка при разархивации: {ex.Message}");
             }
         }
 
@@ -68,7 +63,6 @@ namespace PassportService.Service
             try
             {
                 using(var reader = new StreamReader(pathToCSVFile))
-                //using(var reader = new StreamReader(@"c://file.csv"))
                 using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                 {
                     await foreach(var record in csv.GetRecordsAsync<PassportCsvRecord>())
