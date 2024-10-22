@@ -25,7 +25,7 @@ namespace PassportService.Service
             string pathToZipFile = _configuration.GetConnectionString("CSVFilePath");
             string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
             try
-            {   
+            {
                 ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
                 //находим наш файл, который был созданы последним
                 string? pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv")
@@ -44,12 +44,12 @@ namespace PassportService.Service
             }
             catch(InvalidDataException ex)
             {
-                _logger.LogError($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");              
-                throw new InvalidDataException($"Ошибка: файл не является допустимым ZIP-файлом. { ex.Message }");
+                _logger.LogError($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
+                throw new InvalidDataException($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
             }
             catch(IOException ex)
             {
-                _logger.LogError($"Ошибка ввода-вывода: {ex.Message}");   
+                _logger.LogError($"Ошибка ввода-вывода: {ex.Message}");
                 throw new IOException($"Ошибка ввода-вывода: {ex.Message}");
             }
             catch(Exception ex)
@@ -60,7 +60,7 @@ namespace PassportService.Service
         }
 
         public async Task LoadPassportsFromCsvAsync()
-        { 
+        {
             string pathToCSVFile = UnpackingCSVFile();
 
             var passports = new List<Passport>();

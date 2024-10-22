@@ -81,13 +81,10 @@ namespace PassportService.Service
         {
             await _dbContext.Passports.AddRangeAsync(passports);
             await _dbContext.SaveChangesAsync();
-        }      
+        }
 
         public Task<List<Passport>> SerchDeletePassports()
         {
-            //return _dbContext.Passports
-            //         .Where(passport => !passport.DateLastRequest.Date.Equals(today.Date)).ToListAsync();
-
             return _dbContext.Passports
                  .Where(passport =>
                      !passport.DateLastRequest.Date.Equals(today.Date) &&
@@ -98,7 +95,7 @@ namespace PassportService.Service
         }
 
         public async Task UpdateDeletedPassportAsync()
-        {          
+        {
             var passportsToDelete = await SerchDeletePassports();
 
             foreach(var passportWasDelete in passportsToDelete)
