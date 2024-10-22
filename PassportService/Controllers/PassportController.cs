@@ -46,6 +46,27 @@ namespace PassportService.Controllers
             return Ok(Results.Json(passports));
         }
 
+        [HttpGet("InactivePassportsSeries/{Series}")]
+        public async Task<IActionResult> GetInactivePassportsBySeries(string Series)
+        {
+            List<Passport> passports = await _passportService.GetInactivePassportsBySeries(Series);
+            return Ok(Results.Json(passports));
+        }
+
+        [HttpGet("InactivePassportsNumber/{Number}")]
+        public async Task<IActionResult> GetInactivePassportsByNumber(string Number)
+        {
+            List<Passport> passports = await _passportService.GetInactivePassportsByNumber(Number);
+            return Ok(Results.Json(passports));
+        }
+
+        [HttpGet("InactivePassportsSeriesAndNumber/{SeriesAndNumber}")]
+        public async Task<IActionResult> GetInactivePassportsBySeriesAndNumber(string SeriesAndNumber)
+        {
+            List<Passport> passports = await _passportService.GetInactivePassportsBySeriesAndNumber(SeriesAndNumber);
+            return Ok(Results.Json(passports));
+        }
+
         [HttpGet("PassportsByDate/{date}")]
         public async Task<IActionResult> GetPassportsByDate(string date)
         {

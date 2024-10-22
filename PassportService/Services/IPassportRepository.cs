@@ -12,6 +12,9 @@ namespace PassportService.Service
         Task<List<Passport>> GetPassportsBySeries(string Series);
         Task<List<Passport>> GetPassportsByNumber(string Number);
         Task<List<Passport>> GetPassportsBySeriesAndNumber(string SeriesAndNumber);
+        Task<List<Passport>> GetInactivePassportsBySeries(string Series);
+        Task<List<Passport>> GetInactivePassportsByNumber(string Number);
+        Task<List<Passport>> GetInactivePassportsBySeriesAndNumber(string SeriesAndNumber);
         Task<List<Passport>> GetPassportsByDate(DateTime date);
         Task UpdateDeletedPassportAsync();
     }

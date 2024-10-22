@@ -53,6 +53,46 @@ namespace PassportService.Service
                   .ToListAsync();
         }
 
+        public Task<List<Passport>> GetInactivePassportsBySeries(string Series)
+        {
+            return _dbContext.Passports
+                    .Where(p => p.Series.Contains(Series) &&
+                        (p.RemovedAt == null || !p.RemovedAt.Any()
+                        || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+                    ).ToListAsync();
+        }
+
+        public Task<List<Passport>> GetInactivePassportsByNumber(string Number)
+        {
+            return _dbContext.Passports
+                 .Where(p => p.Number.Contains(Number) &&
+                     (p.RemovedAt == null || !p.RemovedAt.Any()
+                     || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+                 ).ToListAsync();
+        }
+
+        public Task<List<Passport>> GetInactivePassportsBySeriesAndNumber(string SeriesAndNumber)
+        {
+            var seriesPart = SeriesAndNumber.Length >= 4
+                   ? SeriesAndNumber.Substring(0, 4)
+                   : SeriesAndNumber;
+
+            var numbeerPart = SeriesAndNumber.Length > 4
+                  ? SeriesAndNumber.Substring(4, SeriesAndNumber.Length - 4)
+                  : "";
+
+            return _dbContext.Passports
+               .Where(p => p.Series.Contains(seriesPart) &&
+                    (p.RemovedAt == null || !p.RemovedAt.Any()
+                    || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+               )
+               .Where(p => p.Number.Contains(numbeerPart) &&
+                    (p.RemovedAt == null || !p.RemovedAt.Any()
+                    || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+               )
+               .ToListAsync();
+        }
+
         public async Task<List<Passport>> GetPassportsByDate(DateTime date)
         {
             var passportsByDate = await _dbContext.Passports
