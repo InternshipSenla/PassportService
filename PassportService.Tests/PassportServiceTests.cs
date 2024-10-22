@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System;
 using Moq;
 using PassportService.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using PassportService.Core;
 
 namespace PassportService.Tests
 {
@@ -12,8 +14,5 @@ namespace PassportService.Tests
     {
         private readonly Mock<PassportDbContext> _dbContextMock;
         private readonly PassportService.Services.IPassportRepository _passportService;
-
- 
-     
     }
 }

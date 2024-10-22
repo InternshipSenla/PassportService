@@ -111,9 +111,29 @@ namespace PassportService.Services
             return exists;
         }
 
+        public async Task<List<Passport>?> GetPassportsThatAreInDbAndInCollection(IEnumerable<Passport> passports)
+        {            
+            var seriesNumbers = passports
+                .Select(p => p.Series + p.Number)
+                .ToList();
+
+            // Выполняем запрос к базе данных, чтобы получить уже существующие паспорта
+            var existingPassports = await _dbContext.Passports
+                .Where(p => seriesNumbers.Contains(p.Series + p.Number))
+                .ToListAsync();
+
+            return existingPassports;
+        }
+
         public async Task UpdatePassport(Passport passport)
         {
             _dbContext.Update(passport);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task UpdatePassports(List<Passport> passports)
+        {
+            _dbContext.UpdateRange(passports);     
             await _dbContext.SaveChangesAsync();
         }
 

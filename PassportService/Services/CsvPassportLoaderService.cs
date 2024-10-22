@@ -78,16 +78,14 @@ namespace PassportService.Services
                             var passport = new Passport
                             {
                                 Series = record.PASSP_SERIES,
-                                Number = record.PASSP_NUMBER,
-                                CreatedAt = new List<DateTime> { today },
-                                DateLastRequest = today
+                                Number = record.PASSP_NUMBER                                                        
                             };
                             batch.Add(passport);
 
                             // Добавляем записи в БД
                             if(batch.Count >= batchSize)
                             {
-                                await AddPassportsIfNotExistsAsync(batch);
+                                await AddPassports(batch);
                                 batch.Clear();
                             }
                         }
@@ -96,7 +94,7 @@ namespace PassportService.Services
                 // Добавляем оставшиеся записи, если они есть
                 if(batch.Count > 0)
                 {
-                    await AddPassportsIfNotExistsAsync(batch);
+                    await AddPassports(batch);
                 }
             }
             catch(FileNotFoundException ex)
@@ -111,34 +109,60 @@ namespace PassportService.Services
             await _passportService.UpdateDeletedPassportAsync();
         }
 
-        public async Task AddPassportsIfNotExistsAsync(IEnumerable<Passport> newPassports)
+
+        public async Task AddPassports(IEnumerable<Passport> newPassports)
         {
-            var passportsToAdd = new List<Passport>();
-            foreach(var passport in newPassports)
+            List<Passport> newPassportsForAdd = new List<Passport>();
+            List<Passport>? oldPassports = await _passportService.GetPassportsThatAreInDbAndInCollection(newPassports);
+           
+            if(oldPassports == null || !oldPassports.Any()) //если все паспорта новые 
             {
-                // Проверяем, существует ли паспорт в БД     
-                Passport exists = await _passportService.GetPassportAsync(passport);
-                if(exists == null)
+                await AddNewPassportsInDb(newPassports.ToList());                
+            }
+            else if(oldPassports.Count == newPassports.Count())    //если все старые    
+            {
+                await AddPassportsThatAreInDb(oldPassports);
+            }
+            else
+            {
+                newPassportsForAdd = newPassports
+                        .Where(p => !oldPassports
+                            .Any(ep => ep.Series == p.Series && ep.Number == p.Number))
+                        .ToList();
+
+               await AddNewPassportsInDb(newPassportsForAdd);
+               await AddPassportsThatAreInDb(oldPassports);
+            }
+        }
+
+        public async Task AddNewPassportsInDb(List<Passport> newPassports) //добавляем новые паспорта
+        {
+            foreach(Passport passport in newPassports)
+            {
+                if(passport.CreatedAt == null)
                 {
-                    passportsToAdd.Add(passport);
+                    passport.CreatedAt = new List<DateTime>();
                 }
-                else
+                passport.CreatedAt.Add(today);
+                passport.DateLastRequest = today;
+            }
+            await _passportService.AddPassportsAsync(newPassports);
+        }
+
+        public async Task AddPassportsThatAreInDb(List<Passport> oldPassports)
+        {//добавляем паспорта, которые были в БД (Они могут быть в файле, а могли быть удалены из БД и вновь появились в файле)
+            foreach(Passport passport in oldPassports)
+            {
+                passport.DateLastRequest = today; // Обновляем дату последнего обнаружения в файле
+                if(passport.RemovedAt != null && passport.RemovedAt.Any())
                 {
-                    exists.DateLastRequest = today; // Обновляем дату последнего обнаружения в файле
-                    if(exists.RemovedAt != null && exists.RemovedAt.Any())
-                    {
-                        if(exists.RemovedAt.Max() > exists.CreatedAt.Max()) //если добавили паспорт, который удаляли (дата удаления позже даты создания)
-                        {                                                   //в коллекцию дат Добавления добавляем сегодняюшнюю дату
-                            exists.CreatedAt.Add(today);
-                        }
+                    if(passport.RemovedAt.Max() > passport.CreatedAt.Max()) //если добавили паспорт, который удаляли (дата удаления позже даты создания)
+                    {                                                   //в коллекцию дат Добавления добавляем сегодняюшнюю дату
+                        passport.CreatedAt.Add(today);
                     }
-                    await _passportService.UpdatePassport(exists);// Обновляем объект в контексте                  
-                }
+                }             
             }
-            if(passportsToAdd.Any())
-            {
-                await _passportService.AddPassportsAsync(passportsToAdd);
-            }
+            await _passportService.UpdatePassports(oldPassports);// Обновляем объект в контексте
         }
     }
 }
