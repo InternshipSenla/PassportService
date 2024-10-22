@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using PassportService.Core;
 using PassportService.Infrastructure;
-using PassportService.Service;
+using PassportService.Services;
 
 namespace PassportService.Controllers
 {
@@ -11,10 +11,10 @@ namespace PassportService.Controllers
     public class DatabaseController :Controller
     {
         private IPassportRepository _passportService;
-        private ICsvPassportLoaderRepository _cvsPasportService;
+        private ICsvPassportLoaderService _cvsPasportService;
         private PassportDbContext _dbContext;
 
-        public DatabaseController(ICsvPassportLoaderRepository cvsPasportService, IPassportRepository passportService, PassportDbContext dbContext)
+        public DatabaseController(ICsvPassportLoaderService cvsPasportService, IPassportRepository passportService, PassportDbContext dbContext)
         {
             _cvsPasportService = cvsPasportService;
             _passportService = passportService;

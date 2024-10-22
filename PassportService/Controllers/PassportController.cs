@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PassportService.Core;
 using PassportService.Infrastructure;
-using PassportService.Service;
+using PassportService.Services;
 
 namespace PassportService.Controllers
 {

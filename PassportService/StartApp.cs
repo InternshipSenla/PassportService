@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PassportService.Infrastructure;
-using PassportService.Service;
+using PassportService.Services;
 
 namespace PassportService
 {
@@ -10,8 +10,8 @@ namespace PassportService
         {
             builder.Services.AddDbContext<PassportDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-            builder.Services.AddScoped<IPassportRepository, PassportService.Service.PassportService>();
-            builder.Services.AddScoped<ICsvPassportLoaderRepository, PassportService.Service.CsvPassportLoaderService>();
+            builder.Services.AddScoped<IPassportRepository, Services.PassportRepository>();
+            builder.Services.AddScoped<ICsvPassportLoaderService, CsvPassportLoaderService>();
             builder.Services.AddHostedService<PassportUpdateService>();
         }
     }

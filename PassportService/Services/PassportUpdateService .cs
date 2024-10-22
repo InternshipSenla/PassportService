@@ -1,4 +1,4 @@
-﻿namespace PassportService.Service
+﻿namespace PassportService.Services
 {
     public class PassportUpdateService :BackgroundService
     {
@@ -26,7 +26,7 @@
                     using(var scope = _scopeFactory.CreateScope())
                     {
                         // Получаем зависимость сервиса для обновления паспортов
-                        var passportLoaderService = scope.ServiceProvider.GetRequiredService<ICsvPassportLoaderRepository>();
+                        var passportLoaderService = scope.ServiceProvider.GetRequiredService<ICsvPassportLoaderService>();
 
                         try
                         {

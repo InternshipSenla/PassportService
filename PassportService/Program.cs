@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using PassportService;
 
 internal class Program
@@ -16,11 +17,14 @@ internal class Program
         if(app.Environment.IsDevelopment())
         {
             app.UseSwagger();
-            app.UseSwaggerUI();
-        }
+            app.UseSwaggerUI(options =>
+            {
+                options.DisplayRequestDuration();
+            });
+        }     
 
         app.UseHttpsRedirection();
-
+       
         app.UseAuthorization();
 
         app.MapControllers();

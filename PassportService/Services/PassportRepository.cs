@@ -2,16 +2,16 @@
 using PassportService.Core;
 using PassportService.Infrastructure;
 
-namespace PassportService.Service
+namespace PassportService.Services
 {
-    public class PassportService :IPassportRepository
+    public class PassportRepository :IPassportRepository
     {
         public DateTime today = DateTime.UtcNow;
         IConfiguration _configuration;
         private PassportDbContext _dbContext;
-        private readonly ILogger<PassportService> _logger;
+        private readonly ILogger<PassportRepository> _logger;
 
-        public PassportService(IConfiguration configuration, PassportDbContext dbContext, ILogger<PassportService> logger)
+        public PassportRepository(IConfiguration configuration, PassportDbContext dbContext, ILogger<PassportRepository> logger)
         {
             _configuration = configuration;
             _dbContext = dbContext;
@@ -58,7 +58,7 @@ namespace PassportService.Service
             return _dbContext.Passports
                     .Where(p => p.Series.Contains(Series) &&
                         (p.RemovedAt == null || !p.RemovedAt.Any()
-                        || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+                        || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
                     ).ToListAsync();
         }
 
@@ -67,7 +67,7 @@ namespace PassportService.Service
             return _dbContext.Passports
                  .Where(p => p.Number.Contains(Number) &&
                      (p.RemovedAt == null || !p.RemovedAt.Any()
-                     || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+                     || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
                  ).ToListAsync();
         }
 
@@ -84,11 +84,11 @@ namespace PassportService.Service
             return _dbContext.Passports
                .Where(p => p.Series.Contains(seriesPart) &&
                     (p.RemovedAt == null || !p.RemovedAt.Any()
-                    || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
                )
                .Where(p => p.Number.Contains(numbeerPart) &&
                     (p.RemovedAt == null || !p.RemovedAt.Any()
-                    || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
+                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
                )
                .ToListAsync();
         }
@@ -99,7 +99,7 @@ namespace PassportService.Service
               .Where(passport =>
                         passport.CreatedAt.Any(createdDate => createdDate.Date == date.Date)
                         ||
-                        (passport.RemovedAt != null && passport.RemovedAt.Any(removedDate => removedDate.HasValue && removedDate.Value.Date == date.Date)))
+                        passport.RemovedAt != null && passport.RemovedAt.Any(removedDate => removedDate.HasValue && removedDate.Value.Date == date.Date))
               .ToListAsync();
             return passportsByDate;
         }

@@ -1,11 +1,11 @@
 ﻿using PassportService.Core;
 
-namespace PassportService.Service
+namespace PassportService.Services
 {
     public interface IPassportRepository
     {
         Task<Passport> GetPassportAsync(Passport passport);
-        Task AddPassportsAsync(List<Passport> passports);      
+        Task AddPassportsAsync(List<Passport> passports);
         Task<List<Passport>> SerchDeletePassports();
         Task UpdatePassport(Passport passport);
         Task<List<Passport>> GetAllPassports();

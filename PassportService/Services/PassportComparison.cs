@@ -1,6 +1,6 @@
 ﻿using PassportService.Core;
 
-namespace PassportService.Service
+namespace PassportService.Services
 {
     public class PassportComparison
     {

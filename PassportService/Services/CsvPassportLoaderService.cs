@@ -4,16 +4,16 @@ using PassportService.Core;
 using System.Globalization;
 using System.IO.Compression;
 
-namespace PassportService.Service
+namespace PassportService.Services
 {
-    public class CsvPassportLoaderService :ICsvPassportLoaderRepository
+    public class CsvPassportLoaderService :ICsvPassportLoaderService
     {
         public DateTime today = DateTime.UtcNow;
-        private readonly ILogger<PassportService> _logger;
+        private readonly ILogger<PassportRepository> _logger;
         IConfiguration _configuration;
         IPassportRepository _passportService;
 
-        public CsvPassportLoaderService(IPassportRepository passportService, IConfiguration configuration, ILogger<PassportService> logger)
+        public CsvPassportLoaderService(IPassportRepository passportService, IConfiguration configuration, ILogger<PassportRepository> logger)
         {
             _passportService = passportService;
             _configuration = configuration;
@@ -70,24 +70,26 @@ namespace PassportService.Service
             try
             {
                 using(var reader = new StreamReader(pathToCSVFile))
-                using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                 {
-                    await foreach(var record in csv.GetRecordsAsync<PassportCsvRecord>())
+                    using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                     {
-                        var passport = new Passport
+                        await foreach(var record in csv.GetRecordsAsync<PassportCsvRecord>())
                         {
-                            Series = record.PASSP_SERIES,
-                            Number = record.PASSP_NUMBER,
-                            CreatedAt = new List<DateTime> { today },
-                            DateLastRequest = today
-                        };
-                        batch.Add(passport);
+                            var passport = new Passport
+                            {
+                                Series = record.PASSP_SERIES,
+                                Number = record.PASSP_NUMBER,
+                                CreatedAt = new List<DateTime> { today },
+                                DateLastRequest = today
+                            };
+                            batch.Add(passport);
 
-                        // Добавляем записи в БД
-                        if(batch.Count >= batchSize)
-                        {
-                            await AddPassportsIfNotExistsAsync(batch);
-                            batch.Clear();
+                            // Добавляем записи в БД
+                            if(batch.Count >= batchSize)
+                            {
+                                await AddPassportsIfNotExistsAsync(batch);
+                                batch.Clear();
+                            }
                         }
                     }
                 }

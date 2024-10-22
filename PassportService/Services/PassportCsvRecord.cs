@@ -1,4 +1,4 @@
-﻿namespace PassportService.Service
+﻿namespace PassportService.Services
 {
     public class PassportCsvRecord
     {
