@@ -1,8 +1,6 @@
 ﻿using CsvHelper;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using PassportService.Core;
-using PassportService.Infrastructure;
 using System.Globalization;
 using System.IO.Compression;
 
@@ -10,22 +8,22 @@ namespace PassportService.Service
 {
     public class CsvPassportLoaderService :ICsvPassportLoaderRepository
     {
-        private DateTime today = DateTime.UtcNow;  
+        private DateTime today = DateTime.UtcNow;
         private readonly ILogger<PassportService> _logger;
         IConfiguration _configuration;
         IPassportRepository _passportService;
 
-        public CsvPassportLoaderService(IPassportRepository passportService , IConfiguration configuration, ILogger<PassportService> logger)
+        public CsvPassportLoaderService(IPassportRepository passportService, IConfiguration configuration, ILogger<PassportService> logger)
         {
             _passportService = passportService;
-            _configuration = configuration;    
+            _configuration = configuration;
             _logger = logger;
         }
 
         public void UnpackingCSVFile()
         {
             string pathToZipFile = _configuration.GetConnectionString("CSVFilePath");
-            string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");     
+            string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
             try
             {
                 if(!File.Exists(pathToZipFile))
@@ -38,7 +36,7 @@ namespace PassportService.Service
                     Directory.CreateDirectory(pathToCSVFolder);
                 }
 
-                ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);       
+                ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
             }
             catch(InvalidDataException ex)
             {
@@ -54,54 +52,57 @@ namespace PassportService.Service
             {
                 _logger.LogError($"Общая ошибка при разархивации: {ex.Message}");
                 throw;
-            }           
-        }
-        public string GetPathToUnpackCSVFile()
-        {
-            string pathToFolderWhithCSVFile = _configuration.GetConnectionString("CSVFileFolder");
-            string pathToCSVFile = Directory.GetFiles(pathToFolderWhithCSVFile, "*.csv").FirstOrDefault();
-            if(string.IsNullOrEmpty(pathToCSVFile))
-            {
-                throw new FileNotFoundException("CSV-файл не найден в распакованной папке.", pathToFolderWhithCSVFile);
             }
-            return pathToCSVFile;
         }
-     
+
         public async Task LoadPassportsFromCsvAsync()
         {
             UnpackingCSVFile();
-            string pathToCSVFile = GetPathToUnpackCSVFile();
-            var passports = new List<Passport>();
+            string pathToFolderWhithCSVFile = _configuration.GetConnectionString("CSVFileFolder");
+            string pathToCSVFile = Directory.GetFiles(pathToFolderWhithCSVFile, "*.csv").FirstOrDefault();
 
+            var passports = new List<Passport>();
             const int batchSize = 1000; // Размер партии для добавления в БД
             var batch = new List<Passport>(batchSize);
 
-            using(var reader = new StreamReader(pathToCSVFile))
-            using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+            try
             {
-                await foreach(var record in csv.GetRecordsAsync<PassportCsvRecord>())
+                using(var reader = new StreamReader(pathToCSVFile))
+                //using(var reader = new StreamReader(@"c://file.csv"))
+                using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                 {
-                    var passport = new Passport
+                    await foreach(var record in csv.GetRecordsAsync<PassportCsvRecord>())
                     {
-                        Series = record.PASSP_SERIES,
-                        Number = record.PASSP_NUMBER,
-                        CreatedAt = new List<DateTime> { today },
-                        DateLastRequest = today
-                    };
-                    batch.Add(passport);
+                        var passport = new Passport
+                        {
+                            Series = record.PASSP_SERIES,
+                            Number = record.PASSP_NUMBER,
+                            CreatedAt = new List<DateTime> { today },
+                            DateLastRequest = today
+                        };
+                        batch.Add(passport);
 
-                    // Добавляем записи в БД
-                    if(batch.Count >= batchSize)
-                    {
-                        await AddPassportsIfNotExistsAsync(batch);
-                        batch.Clear();
+                        // Добавляем записи в БД
+                        if(batch.Count >= batchSize)
+                        {
+                            await AddPassportsIfNotExistsAsync(batch);
+                            batch.Clear();
+                        }
                     }
                 }
+                // Добавляем оставшиеся записи, если они есть
+                if(batch.Count > 0)
+                {
+                    await AddPassportsIfNotExistsAsync(batch);
+                }
             }
-            // Добавляем оставшиеся записи, если они есть
-            if(batch.Count > 0)
+            catch(FileNotFoundException ex)
             {
-                await AddPassportsIfNotExistsAsync(batch);
+                throw new FileNotFoundException($"Ошибка: CSV файл не найден. Путь: {ex.FileName}", ex);
+            }
+            catch(Exception ex)
+            {
+                throw new Exception($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}", ex);
             }
             //проверяем удаленные записи
             await _passportService.UpdateDeletedPassportAsync();
@@ -128,6 +129,6 @@ namespace PassportService.Service
             {
                 await _passportService.AddPassportsAsync(passportsToAdd);
             }
-        }  
+        }
     }
 }
