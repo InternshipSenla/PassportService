@@ -20,9 +20,28 @@ namespace PassportService.Services
             _logger = logger;
         }
 
-        public string UnpackingCSVFile()
+        private async Task<string> DownloadCsvFileAsync()
         {
-            string pathToZipFile = _configuration.GetConnectionString("CSVFilePath");
+            string url = _configuration.GetValue<string>("CsvFileSettings:CsvZipFileUrl");
+            using(var httpClient = new HttpClient())
+            {
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var tempFilePath = Path.GetTempFileName(); 
+
+                await using(var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    await response.Content.CopyToAsync(fileStream);
+                }
+
+                return tempFilePath; 
+            }
+        }
+
+        public async Task<string> UnpackingCSVFile()
+        {
+            string pathToZipFile = await DownloadCsvFileAsync();
             string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
             try
             {
@@ -61,7 +80,8 @@ namespace PassportService.Services
 
         public async Task LoadPassportsFromCsvAsync()
         {
-            string pathToCSVFile = UnpackingCSVFile();
+
+            string pathToCSVFile = await UnpackingCSVFile();
 
             var passports = new List<Passport>();
             const int batchSize = 1000; // Размер партии для добавления в БД
