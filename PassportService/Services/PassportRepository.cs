@@ -6,14 +6,12 @@ namespace PassportService.Services
 {
     public class PassportRepository :IPassportRepository
     {
-        public DateTime today = DateTime.UtcNow;
-        IConfiguration _configuration;
+        public DateTime today = DateTime.UtcNow;     
         private PassportDbContext _dbContext;
         private readonly ILogger<PassportRepository> _logger;
 
         public PassportRepository(IConfiguration configuration, PassportDbContext dbContext, ILogger<PassportRepository> logger)
-        {
-            _configuration = configuration;
+        {          
             _dbContext = dbContext;
             _logger = logger;
         }
@@ -23,74 +21,36 @@ namespace PassportService.Services
             return _dbContext.Passports.ToListAsync();
         }
 
-        public Task<List<Passport>> GetPassportsByNumber(string Number)
-        {
+        public Task<List<Passport>> GetPassportsByNumber(int Number)
+        {       
             return _dbContext.Passports
-                .Where(p => p.Number.Contains(Number))
-                .ToListAsync();
+             .Where(p => p.Number == Number)
+             .ToListAsync();
         }
 
-        public Task<List<Passport>> GetPassportsBySeries(string Series)
+        public Task<List<Passport>> GetPassportsBySeries(int Series)
         {
             return _dbContext.Passports
-                .Where(p => p.Series.Contains(Series))
-                .ToListAsync();
+                 .Where(p => p.Series == Series)
+                 .ToListAsync();
         }
 
-        public Task<List<Passport>> GetPassportsBySeriesAndNumber(string SeriesAndNumber)
-        {
-            var seriesPart = SeriesAndNumber.Length >= 4
-                  ? SeriesAndNumber.Substring(0, 4)
-                  : SeriesAndNumber;
-
-            var numbeerPart = SeriesAndNumber.Length > 4
-                  ? SeriesAndNumber.Substring(4, SeriesAndNumber.Length - 4)
-                  : "";
-
-            return _dbContext.Passports
-                  .Where(p => p.Series.Contains(seriesPart))
-                  .Where(p => p.Number.Contains(numbeerPart))
-                  .ToListAsync();
-        }
-
-        public Task<List<Passport>> GetInactivePassportsBySeries(string Series)
+        public Task<List<Passport>> GetInactivePassportsBySeries(int Series)
         {
             return _dbContext.Passports
-                    .Where(p => p.Series.Contains(Series) &&
+                    .Where(p => p.Series == Series &&
                         (p.RemovedAt == null || !p.RemovedAt.Any()
                         || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
                     ).ToListAsync();
         }
 
-        public Task<List<Passport>> GetInactivePassportsByNumber(string Number)
+        public Task<List<Passport>> GetInactivePassportsByNumber(int Number)
         {
             return _dbContext.Passports
-                 .Where(p => p.Number.Contains(Number) &&
+                  .Where(p => p.Number == Number &&
                      (p.RemovedAt == null || !p.RemovedAt.Any()
                      || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
                  ).ToListAsync();
-        }
-
-        public Task<List<Passport>> GetInactivePassportsBySeriesAndNumber(string SeriesAndNumber)
-        {
-            var seriesPart = SeriesAndNumber.Length >= 4
-                   ? SeriesAndNumber.Substring(0, 4)
-                   : SeriesAndNumber;
-
-            var numbeerPart = SeriesAndNumber.Length > 4
-                  ? SeriesAndNumber.Substring(4, SeriesAndNumber.Length - 4)
-                  : "";
-
-            return _dbContext.Passports
-               .Where(p => p.Series.Contains(seriesPart) &&
-                    (p.RemovedAt == null || !p.RemovedAt.Any()
-                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
-               )
-               .Where(p => p.Number.Contains(numbeerPart) &&
-                    (p.RemovedAt == null || !p.RemovedAt.Any()
-                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
-               )
-               .ToListAsync();
         }
 
         public async Task<List<Passport>> GetPassportsByDate(DateTime date)

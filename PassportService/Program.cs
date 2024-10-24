@@ -1,34 +1,29 @@
 using Microsoft.AspNetCore.Builder;
 using PassportService;
 
-internal class Program
+var builder = WebApplication.CreateBuilder(args);
+StartApp.Start(builder);
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+if(app.Environment.IsDevelopment())
 {
-    private static void Main(string[] args)
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
     {
-        var builder = WebApplication.CreateBuilder(args);
-        StartApp.Start(builder);
+        options.DisplayRequestDuration();
+    });
+}     
 
-        builder.Services.AddControllers();
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
-
-        var app = builder.Build();
-
-        if(app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI(options =>
-            {
-                options.DisplayRequestDuration();
-            });
-        }     
-
-        app.UseHttpsRedirection();
+app.UseHttpsRedirection();
        
-        app.UseAuthorization();
+app.UseAuthorization();
 
-        app.MapControllers();
+app.MapControllers();
 
-        app.Run();
-    }
-}
+app.Run();
+  

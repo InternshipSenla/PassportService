@@ -36,16 +36,16 @@ namespace PassportService.Tests
         {     
             var newPassports = new List<Passport>
             {
-                new Passport { Series = "1234", Number = "567890" },
-                new Passport { Series = "1234", Number = "098765" }
+                new Passport { Series = 1234, Number = 567890 },
+                new Passport { Series = 1234, Number = 098765 }
             };
 
             await _csvPassportLoaderService.AddPassports(newPassports);
 
             _passportRepositoryMock.Verify(repo => repo.AddPassportsAsync(It.Is<List<Passport>>(x =>
                    x.Count == 2 &&
-                   x.Any(p => p.Series == "1234" && p.Number == "567890") &&
-                   x.Any(p => p.Series == "1234" && p.Number == "098765"))), Times.Once);
+                   x.Any(p => p.Series == 1234 && p.Number == 567890) &&
+                   x.Any(p => p.Series == 1234 && p.Number == 098765))), Times.Once);
         }
 
         [Test]
@@ -58,8 +58,8 @@ namespace PassportService.Tests
             {
                 new Passport
                 {
-                    Series = "1234",
-                    Number = "567890",
+                    Series = 1234,
+                    Number = 567890,
                     CreatedAt = new List<DateTime> { today.AddYears(-1) }, // Создан год назад
                     RemovedAt = new List<DateTime?> { today.AddMonths(-6) }, // Удален полгода назад
                     DateLastRequest = today.AddYears(-1)
@@ -68,7 +68,7 @@ namespace PassportService.Tests
 
             var newPassports = new List<Passport>
             {
-                new Passport { Series = "1234", Number = "567890" } // Уже существующий паспорт               
+                new Passport { Series = 1234, Number = 567890 } // Уже существующий паспорт               
             };
 
             var passportsInDbAndCollection = oldPassports
@@ -84,7 +84,7 @@ namespace PassportService.Tests
             // Assert: Проверяем обновление существующего паспорта (добавление новой даты)
             _passportRepositoryMock.Verify(repo => repo.UpdatePassports(It.Is<List<Passport>>(x =>
                 x.Count == 1
-                && x.Any(p => p.Series == "1234" && p.Number == "567890"
+                && x.Any(p => p.Series == 1234 && p.Number == 567890
                 && p.CreatedAt.Any(date => date.Date == today.Date) 
                 && p.DateLastRequest.Date == today.Date)
                  )), Times.Once);
@@ -100,8 +100,8 @@ namespace PassportService.Tests
             {
                 new Passport
                 {
-                    Series = "1234",
-                    Number = "567890",
+                    Series = 1234,
+                    Number = 567890,
                     CreatedAt = new List<DateTime> { today.AddYears(-1) }, // Создан год назад
                     RemovedAt = new List<DateTime?> { today.AddMonths(-6) }, // Удален полгода назад
                     DateLastRequest = today.AddYears(-1)
@@ -110,8 +110,8 @@ namespace PassportService.Tests
 
             var newPassports = new List<Passport>
             {
-                new Passport { Series = "1234", Number = "098765" }, // Новый паспорт
-                new Passport { Series = "1234", Number = "567890" }  // Уже существующий паспорт
+                new Passport { Series = 1234, Number = 098765 }, // Новый паспорт
+                new Passport { Series = 1234, Number = 567890 }  // Уже существующий паспорт
             };
 
             // Настройка моков для возврата старых паспортов
@@ -129,14 +129,14 @@ namespace PassportService.Tests
             // Assert: Проверяем обновление существующего паспорта (добавление новой даты)
             _passportRepositoryMock.Verify(repo => repo.UpdatePassports(It.Is<List<Passport>>(x =>
                 x.Count == 1 &&
-                x.Any(p => p.Series == "1234" && p.Number == "567890" &&
+                x.Any(p => p.Series == 1234 && p.Number == 567890 &&
                     p.CreatedAt.Any(date => date.Date == today.Date) &&
                     p.DateLastRequest.Date == today.Date))), Times.Once);
 
             // Assert: Новый паспорт должен быть добавлен в базу
             _passportRepositoryMock.Verify(repo => repo.AddPassportsAsync(It.Is<List<Passport>>(x =>
                 x.Count == 1 &&
-                x.Any(p => p.Series == "1234" && p.Number == "098765"))), Times.Once);
+                x.Any(p => p.Series == 1234 && p.Number == 098765))), Times.Once);
         }
     }
 }

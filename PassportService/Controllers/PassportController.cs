@@ -10,12 +10,10 @@ namespace PassportService.Controllers
     public class PassportController :Controller
     {
         private IPassportRepository _passportService;
-        private PassportDbContext _dbContext;
 
         public PassportController(IPassportRepository passportService, PassportDbContext dbContext)
         {
             _passportService = passportService;
-            _dbContext = dbContext;
         }
 
         [HttpGet("AllPassports")]
@@ -26,46 +24,32 @@ namespace PassportService.Controllers
         }
 
         [HttpGet("GetPassportsBySeries/{Series}")]
-        public async Task<IActionResult> GetPassportsBySeries(string Series)
+        public async Task<IActionResult> GetPassportsBySeries(int Series)
         {
             List<Passport> passports = await _passportService.GetPassportsBySeries(Series);
             return Ok(Results.Json(passports));
         }
 
         [HttpGet("GetPassportsByNumber/{Number}")]
-        public async Task<IActionResult> GetPassportsByNumber(string Number)
+        public async Task<IActionResult> GetPassportsByNumber(int Number)
         {
             List<Passport> passports = await _passportService.GetPassportsByNumber(Number);
             return Ok(Results.Json(passports));
         }
 
-        [HttpGet("GetPassportsBySeriesAndNumber/{SeriesAndNumber}")]
-        public async Task<IActionResult> GetPassportsBySeriesAndNumber(string SeriesAndNumber)
-        {
-            List<Passport> passports = await _passportService.GetPassportsBySeriesAndNumber(SeriesAndNumber);
-            return Ok(Results.Json(passports));
-        }
-
         [HttpGet("GetInactivePassportsBySeries/{Series}")]
-        public async Task<IActionResult> GetInactivePassportsBySeries(string Series)
+        public async Task<IActionResult> GetInactivePassportsBySeries(int Series)
         {
             List<Passport> passports = await _passportService.GetInactivePassportsBySeries(Series);
             return Ok(Results.Json(passports));
         }
 
         [HttpGet("GetInactivePassportsByNumber/{Number}")]
-        public async Task<IActionResult> GetInactivePassportsByNumber(string Number)
+        public async Task<IActionResult> GetInactivePassportsByNumber(int Number)
         {
             List<Passport> passports = await _passportService.GetInactivePassportsByNumber(Number);
             return Ok(Results.Json(passports));
-        }
-
-        [HttpGet("GetInactivePassportsBySeriesAndNumber/{SeriesAndNumber}")]
-        public async Task<IActionResult> GetInactivePassportsBySeriesAndNumber(string SeriesAndNumber)
-        {
-            List<Passport> passports = await _passportService.GetInactivePassportsBySeriesAndNumber(SeriesAndNumber);
-            return Ok(Results.Json(passports));
-        }                
+        }            
 
         [HttpGet("GetPassportsByDate/{date}")]
         public async Task<IActionResult> GetPassportsByDate(DateTime date)
