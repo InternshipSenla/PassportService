@@ -27,8 +27,6 @@ namespace PassportService.Tests
             _loggerMock = new Mock<ILogger<PassportRepository>>();
             _csvPassportLoaderService 
                 = new CsvPassportLoaderService(_passportRepositoryMock.Object, _configurationMock.Object, _loggerMock.Object);
-
-           // _passportRepository = new PassportRepository()
         }
 
         [Test]
@@ -42,10 +40,13 @@ namespace PassportService.Tests
 
             await _csvPassportLoaderService.AddPassports(newPassports);
 
+            _passportRepositoryMock.Verify(service =>
+                 service.GetPassportsThatAreInDbAndInCollection(newPassports), Times.Once);
+
             _passportRepositoryMock.Verify(repo => repo.AddPassportsAsync(It.Is<List<Passport>>(x =>
                    x.Count == 2 &&
                    x.Any(p => p.Series == 1234 && p.Number == 567890) &&
-                   x.Any(p => p.Series == 1234 && p.Number == 098765))), Times.Once);
+                   x.Any(p => p.Series == 1234 && p.Number == 098765))), Times.Once);           
         }
 
         [Test]
@@ -81,7 +82,9 @@ namespace PassportService.Tests
 
             await _csvPassportLoaderService.AddPassports(newPassports);
 
-            // Assert: Проверяем обновление существующего паспорта (добавление новой даты)
+            _passportRepositoryMock.Verify(service =>
+                service.GetPassportsThatAreInDbAndInCollection(newPassports), Times.Once);
+
             _passportRepositoryMock.Verify(repo => repo.UpdatePassports(It.Is<List<Passport>>(x =>
                 x.Count == 1
                 && x.Any(p => p.Series == 1234 && p.Number == 567890
@@ -125,6 +128,10 @@ namespace PassportService.Tests
 
             // Действие: добавление паспортов
             await _csvPassportLoaderService.AddPassports(newPassports);
+
+            // Assert: Проверяем что метод был вызван один раз
+            _passportRepositoryMock.Verify(service =>
+                service.GetPassportsThatAreInDbAndInCollection(newPassports), Times.Once);
 
             // Assert: Проверяем обновление существующего паспорта (добавление новой даты)
             _passportRepositoryMock.Verify(repo => repo.UpdatePassports(It.Is<List<Passport>>(x =>

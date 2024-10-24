@@ -1,9 +1,5 @@
-using Microsoft.AspNetCore.Builder;
-using PassportService;
-
 var builder = WebApplication.CreateBuilder(args);
-StartApp.Start(builder);
-
+builder.Services.AddPassportServices(builder.Configuration);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -17,13 +13,13 @@ if(app.Environment.IsDevelopment())
     {
         options.DisplayRequestDuration();
     });
-}     
+}
 
 app.UseHttpsRedirection();
-       
+
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
-  
+

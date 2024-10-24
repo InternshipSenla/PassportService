@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PassportService.Core;
 using PassportService.Infrastructure;
+using System.Linq;
 
 namespace PassportService.Services
 {
@@ -71,15 +72,15 @@ namespace PassportService.Services
         }
 
         public async Task<List<Passport>?> GetPassportsThatAreInDbAndInCollection(IEnumerable<Passport> passports)
-        {            
+        {
             var seriesNumbers = passports
                 .Select(p => p.Series + p.Number)
                 .ToList();
 
-            // Выполняем запрос к базе данных, чтобы получить уже существующие паспорта
-            var existingPassports = await _dbContext.Passports
-                .Where(p => seriesNumbers.Contains(p.Series + p.Number))
-                .ToListAsync();
+           // Выполняем запрос к базе данных, чтобы получить уже существующие паспорта
+           var existingPassports = await _dbContext.Passports
+               .Where(p => seriesNumbers.Contains(p.Series + p.Number))
+               .ToListAsync();         
 
             return existingPassports;
         }

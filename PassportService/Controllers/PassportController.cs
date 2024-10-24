@@ -11,7 +11,7 @@ namespace PassportService.Controllers
     {
         private IPassportRepository _passportService;
 
-        public PassportController(IPassportRepository passportService, PassportDbContext dbContext)
+        public PassportController(IPassportRepository passportService)
         {
             _passportService = passportService;
         }
