@@ -71,9 +71,13 @@ namespace PassportService.Tests
                 new Passport { Series = "1234", Number = "567890" } // Уже существующий паспорт               
             };
 
+            var passportsInDbAndCollection = oldPassports
+             .Where(old => newPassports.Any(newPass => newPass.Series == old.Series && newPass.Number == old.Number))
+             .ToList();
+
             _passportRepositoryMock
-               .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(It.IsAny<List<Passport>>()))
-               .ReturnsAsync(oldPassports);
+               .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(newPassports))
+               .ReturnsAsync(passportsInDbAndCollection);
 
             await _csvPassportLoaderService.AddPassports(newPassports);
 
@@ -114,8 +118,9 @@ namespace PassportService.Tests
             var passportsInDbAndCollection = oldPassports
                 .Where(old => newPassports.Any(newPass => newPass.Series == old.Series && newPass.Number == old.Number))
                 .ToList();
+
             _passportRepositoryMock
-                .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(It.IsAny<List<Passport>>()))
+                .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(newPassports))
                 .ReturnsAsync(passportsInDbAndCollection);
 
             // Действие: добавление паспортов
