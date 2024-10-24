@@ -14,8 +14,6 @@ namespace PassportService.Tests
     [TestFixture]
     public class CsvPassportLoaderServiceTests
     {
-        private Mock<ICsvPassportLoaderService> _сsvPassportLoaderServiceMock;
-
         private CsvPassportLoaderService _csvPassportLoaderService;    
         private Mock<IConfiguration> _configurationMock;
         private Mock<IPassportRepository> _passportRepositoryMock;
@@ -23,7 +21,7 @@ namespace PassportService.Tests
          
         [SetUp]
         public void Setup()
-        {       
+        {
             _configurationMock = new Mock<IConfiguration>();
             _passportRepositoryMock = new Mock<IPassportRepository>();           
             _loggerMock = new Mock<ILogger<PassportRepository>>();
@@ -41,10 +39,6 @@ namespace PassportService.Tests
                 new Passport { Series = "1234", Number = "567890" },
                 new Passport { Series = "1234", Number = "098765" }
             };
-
-            _сsvPassportLoaderServiceMock
-                .Setup(repo => repo.AddNewPassportsInDb(It.IsAny<List<Passport>>()))
-                .Returns(Task.CompletedTask);
 
             await _csvPassportLoaderService.AddPassports(newPassports);
 
@@ -117,9 +111,12 @@ namespace PassportService.Tests
             };
 
             // Настройка моков для возврата старых паспортов
+            var passportsInDbAndCollection = oldPassports
+                .Where(old => newPassports.Any(newPass => newPass.Series == old.Series && newPass.Number == old.Number))
+                .ToList();
             _passportRepositoryMock
                 .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(It.IsAny<List<Passport>>()))
-                .ReturnsAsync(oldPassports);
+                .ReturnsAsync(passportsInDbAndCollection);
 
             // Действие: добавление паспортов
             await _csvPassportLoaderService.AddPassports(newPassports);
