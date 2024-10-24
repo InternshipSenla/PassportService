@@ -9,12 +9,10 @@ namespace PassportService.Services
     {
         public DateTime today = DateTime.UtcNow;     
         private PassportDbContext _dbContext;
-        private readonly ILogger<PassportRepository> _logger;
 
-        public PassportRepository(IConfiguration configuration, PassportDbContext dbContext, ILogger<PassportRepository> logger)
+        public PassportRepository( PassportDbContext dbContext)
         {          
-            _dbContext = dbContext;
-            _logger = logger;
+            _dbContext = dbContext;        
         }
 
         public Task<List<Passport>> GetAllPassports()

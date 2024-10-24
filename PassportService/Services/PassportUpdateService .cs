@@ -1,23 +1,28 @@
-﻿namespace PassportService.Services
+﻿using Microsoft.Extensions.Options;
+using PassportService.Configuration;
+
+namespace PassportService.Services
 {
     public class PassportUpdateService :BackgroundService
     {
         private readonly ILogger<PassportUpdateService> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
+        private readonly IOptions<PassportUpdateTimeSettings> _options;
 
-        public PassportUpdateService(ILogger<PassportUpdateService> logger, IServiceScopeFactory scopeFactory, IConfiguration configuration)
+        public PassportUpdateService(IOptions<PassportUpdateTimeSettings> options, ILogger<PassportUpdateService> logger, IServiceScopeFactory scopeFactory, IConfiguration configuration)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _configuration = configuration;
+            _options = options;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while(!stoppingToken.IsCancellationRequested)
             {
-                var updateTime = _configuration.GetValue<TimeSpan>("PassportUpdate:TimeOfDay");
+                var updateTime = _options.Value.TimeOfDay;
                 var currentTime = DateTime.UtcNow.TimeOfDay;
 
                 // Проверяем, что текущее время равно или на 1 минуту больше, чем заданое время обновления

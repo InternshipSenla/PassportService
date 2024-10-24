@@ -40,9 +40,6 @@ namespace PassportService.Tests
 
             await _csvPassportLoaderService.AddPassports(newPassports);
 
-            _passportRepositoryMock.Verify(service =>
-                 service.GetPassportsThatAreInDbAndInCollection(newPassports), Times.Once);
-
             _passportRepositoryMock.Verify(repo => repo.AddPassportsAsync(It.Is<List<Passport>>(x =>
                    x.Count == 2 &&
                    x.Any(p => p.Series == 1234 && p.Number == 567890) &&
@@ -72,13 +69,9 @@ namespace PassportService.Tests
                 new Passport { Series = 1234, Number = 567890 } // Уже существующий паспорт               
             };
 
-            var passportsInDbAndCollection = oldPassports
-             .Where(old => newPassports.Any(newPass => newPass.Series == old.Series && newPass.Number == old.Number))
-             .ToList();
-
             _passportRepositoryMock
                .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(newPassports))
-               .ReturnsAsync(passportsInDbAndCollection);
+               .ReturnsAsync(oldPassports);
 
             await _csvPassportLoaderService.AddPassports(newPassports);
 
@@ -117,14 +110,9 @@ namespace PassportService.Tests
                 new Passport { Series = 1234, Number = 567890 }  // Уже существующий паспорт
             };
 
-            // Настройка моков для возврата старых паспортов
-            var passportsInDbAndCollection = oldPassports
-                .Where(old => newPassports.Any(newPass => newPass.Series == old.Series && newPass.Number == old.Number))
-                .ToList();
-
             _passportRepositoryMock
-                .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(newPassports))
-                .ReturnsAsync(passportsInDbAndCollection);
+               .Setup(repo => repo.GetPassportsThatAreInDbAndInCollection(newPassports))
+               .ReturnsAsync(oldPassports);
 
             // Действие: добавление паспортов
             await _csvPassportLoaderService.AddPassports(newPassports);

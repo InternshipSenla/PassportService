@@ -1,5 +1,7 @@
 ﻿using CsvHelper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using PassportService.Configuration;
 using PassportService.Core;
 using System.Globalization;
 using System.IO.Compression;
@@ -12,17 +14,19 @@ namespace PassportService.Services
         private readonly ILogger<PassportRepository> _logger;
         IConfiguration _configuration;
         IPassportRepository _passportService;
+        private readonly IOptions<CsvFileSettings> _options;
 
-        public CsvPassportLoaderService(IPassportRepository passportService, IConfiguration configuration, ILogger<PassportRepository> logger)
+        public CsvPassportLoaderService(IOptions<CsvFileSettings> options, IPassportRepository passportService, IConfiguration configuration, ILogger<PassportRepository> logger)
         {
             _passportService = passportService;
             _configuration = configuration;
             _logger = logger;
+            _options = options;
         }
 
         private async Task<string> DownloadCsvFileAsync()
         {
-            string url = _configuration.GetValue<string>("CsvFileSettings:CsvZipFileUrl");
+            string url = _options.Value.CsvZipFileUrl;       
             using(var httpClient = new HttpClient())
             {
                 var response = await httpClient.GetAsync(url);
@@ -41,8 +45,9 @@ namespace PassportService.Services
 
         public async Task<string> UnpackingCSVFile()
         {
-            string pathToZipFile = await DownloadCsvFileAsync();
-            string pathToCSVFolder = _configuration.GetConnectionString("CSVFileFolder");
+            string pathToZipFile = await DownloadCsvFileAsync();          
+            string pathToCSVFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(pathToCSVFolder);
             try
             {
                 ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
@@ -93,7 +98,7 @@ namespace PassportService.Services
                 {
                     using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                     {
-                        await foreach(var record in csv.GetRecordsAsync<PassportCsvRecord>())
+                        await foreach(var record in csv.GetRecordsAsync<PassportCsvModel>())
                         {
                             var passport = new Passport
                             {
@@ -119,10 +124,12 @@ namespace PassportService.Services
             }
             catch(FileNotFoundException ex)
             {
+                _logger.LogError($"Ошибка: CSV файл не найден. Путь: {ex.FileName}");
                 throw new FileNotFoundException($"Ошибка: CSV файл не найден. Путь: {ex.FileName}", ex);
             }
             catch(Exception ex)
             {
+                _logger.LogError($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}", ex);
                 throw new Exception($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}", ex);
             }
             //проверяем удаленные записи

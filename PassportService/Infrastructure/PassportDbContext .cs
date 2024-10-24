@@ -4,19 +4,12 @@ using PassportService.Core;
 namespace PassportService.Infrastructure
 {
     public class PassportDbContext :DbContext
-    {
-        private IConfiguration _configuration;
+    {    
         public DbSet<Passport> Passports { get; set; }
 
-        public PassportDbContext(DbContextOptions<PassportDbContext> options, IConfiguration configuration)
+        public PassportDbContext(DbContextOptions<PassportDbContext> options)
             : base(options)
-        {
-            _configuration = configuration;
-            Database.EnsureCreated();
-        }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-          => optionsBuilder.UseNpgsql(_configuration.GetConnectionString("DefaultConnection"));
+        {    }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
