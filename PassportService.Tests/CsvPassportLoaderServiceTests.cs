@@ -20,21 +20,10 @@ namespace PassportService.Tests
         private Mock<IConfiguration> _configurationMock;
         private Mock<IPassportRepository> _passportRepositoryMock;
         private Mock<ILogger<PassportRepository>> _loggerMock;
-        private PassportDbContext _context; // Добавляем поле для контекста
-
-        private PassportRepository _passportRepository;
-
-        [TearDown]
-        public void TearDown()
-        {
-            // Освобождаем контекст
-            _context?.Dispose();
-        }
+         
         [SetUp]
         public void Setup()
-        {
-            _сsvPassportLoaderServiceMock = new Mock<ICsvPassportLoaderService>();
-
+        {       
             _configurationMock = new Mock<IConfiguration>();
             _passportRepositoryMock = new Mock<IPassportRepository>();           
             _loggerMock = new Mock<ILogger<PassportRepository>>();

@@ -104,11 +104,10 @@ namespace PassportService.Services
             return passportsByDate;
         }
 
-        public async Task<Passport> GetPassportAsync(Passport passport)
-        {
-            var exists = await _dbContext.Passports
-               .Where(existing => existing.Series == passport.Series && existing.Number == passport.Number).FirstOrDefaultAsync();
-            return exists;
+        public  Task<Passport?> GetPassportAsync(Passport passport)
+        {           
+            return _dbContext.Passports
+               .Where(existing => existing.Series == passport.Series && existing.Number == passport.Number).FirstOrDefaultAsync(); ;
         }
 
         public async Task<List<Passport>?> GetPassportsThatAreInDbAndInCollection(IEnumerable<Passport> passports)
@@ -131,10 +130,10 @@ namespace PassportService.Services
             await _dbContext.SaveChangesAsync();
         }
 
-        public async Task UpdatePassports(List<Passport> passports)
+        public Task UpdatePassports(List<Passport> passports)
         {
             _dbContext.UpdateRange(passports);     
-            await _dbContext.SaveChangesAsync();
+            return _dbContext.SaveChangesAsync();
         }
 
         public async Task AddPassportsAsync(List<Passport> passports)
