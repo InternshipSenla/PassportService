@@ -1,19 +1,23 @@
+using PassportService.Configuration;
+
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-
+builder.Services.AddPassportServices(builder.Configuration);
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.Configure<PassportUpdateTimeSettings>(builder.Configuration.GetSection("PassportUpdate"));
+builder.Services.Configure<CsvFileSettings>(builder.Configuration.GetSection("CsvFileSettings"));
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if(app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        options.DisplayRequestDuration();
+    });
 }
 
 app.UseHttpsRedirection();
@@ -23,3 +27,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
