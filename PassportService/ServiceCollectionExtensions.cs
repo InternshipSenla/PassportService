@@ -14,34 +14,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPassportRepository, PassportRepository>();
         services.AddScoped<ICsvPassportLoaderService, CsvPassportLoaderService>();
         services.AddHostedService<PassportUpdateService>();
-        ConfigureDatabase(services);
+        InitializeDatabase(services);
         return services;
     }
 
-    private static void ConfigureDatabase(IServiceCollection services)
+    private static void InitializeDatabase(IServiceCollection services)
     { 
         var serviceProvider = services.BuildServiceProvider();
 
         using(var scope = serviceProvider.CreateScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<PassportDbContext>();
-
-            try
-            {                
-                var pendingMigrations = dbContext.Database.GetPendingMigrations().Any();
-                if(pendingMigrations)
-                {
-                    dbContext.Database.Migrate();
-                }
-                else
-                {
-                    dbContext.Database.EnsureCreated();
-                }
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine($"Error initializing database: {ex.Message}");
-            }
+            var dbContext = scope.ServiceProvider.GetRequiredService<PassportDbContext>();              
+            dbContext.Database.EnsureCreated();
         }
     }
 }
