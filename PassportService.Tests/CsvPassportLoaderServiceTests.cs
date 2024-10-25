@@ -24,13 +24,12 @@ namespace PassportService.Tests
 
         [SetUp]
         public void Setup()
-        {
-            _configurationMock = new Mock<IConfiguration>();
+        {        
             _passportRepositoryMock = new Mock<IPassportRepository>();           
             _loggerMock = new Mock<ILogger<PassportRepository>>();
             _csvFileSettingsMock = new Mock<IOptions<CsvFileSettings>>();
             _csvPassportLoaderService 
-                = new CsvPassportLoaderService(_csvFileSettingsMock.Object, _passportRepositoryMock.Object, _configurationMock.Object, _loggerMock.Object);
+                = new CsvPassportLoaderService(_csvFileSettingsMock.Object, _passportRepositoryMock.Object, _loggerMock.Object);
         }
 
         [Test]

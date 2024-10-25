@@ -4,8 +4,7 @@ namespace PassportService.Services
 {
     public interface IPassportRepository
     {
-        Task AddPassportsAsync(List<Passport> passports);
-        Task UpdatePassport(Passport passport);
+        Task AddPassportsAsync(List<Passport> passports);   
         Task UpdatePassports(List<Passport> passport);
         Task<List<Passport>> GetAllPassports();
         Task<List<Passport>> GetPassportsBySeries(int Series);

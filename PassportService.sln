@@ -5,7 +5,7 @@ VisualStudioVersion = 17.10.35122.118
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PassportService", "PassportService\PassportService.csproj", "{7F6278CC-CF28-4813-A7B9-A89400962ABA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PassportService.Tests", "PassportService.Tests\PassportService.Tests.csproj", "{D09FA164-7448-4263-A054-750DBBA5E9A4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PassportService.Tests", "PassportService.Tests\PassportService.Tests.csproj", "{D09FA164-7448-4263-A054-750DBBA5E9A4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

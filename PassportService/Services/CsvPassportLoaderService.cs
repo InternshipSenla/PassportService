@@ -11,15 +11,13 @@ namespace PassportService.Services
     public class CsvPassportLoaderService :ICsvPassportLoaderService
     {
         public DateTime today = DateTime.UtcNow;
-        private readonly ILogger<PassportRepository> _logger;
-        IConfiguration _configuration;
-        IPassportRepository _passportService;
+        private readonly ILogger<PassportRepository> _logger;      
+        IPassportRepository _passportRepository;
         private readonly IOptions<CsvFileSettings> _options;
 
-        public CsvPassportLoaderService(IOptions<CsvFileSettings> options, IPassportRepository passportService, IConfiguration configuration, ILogger<PassportRepository> logger)
+        public CsvPassportLoaderService(IOptions<CsvFileSettings> options, IPassportRepository passportRepository, ILogger<PassportRepository> logger)
         {
-            _passportService = passportService;
-            _configuration = configuration;
+            _passportRepository = passportRepository; 
             _logger = logger;
             _options = options;
         }
@@ -50,6 +48,7 @@ namespace PassportService.Services
             Directory.CreateDirectory(pathToCSVFolder);
             try
             {
+                _logger.LogInformation("Распаковка файла!");
                 ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
                 //находим наш файл, который был созданы последним
                 string? pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv")
@@ -59,6 +58,7 @@ namespace PassportService.Services
                 {
                     throw new FileNotFoundException();
                 }
+                _logger.LogInformation("Файл успешно распакован!");
                 return pathToCSVFile;
             }
             catch(FileNotFoundException)
@@ -94,6 +94,7 @@ namespace PassportService.Services
 
             try
             {
+                _logger.LogInformation("Работа с CSV файлом!");
                 using(var reader = new StreamReader(pathToCSVFile))
                 {
                     using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
@@ -121,6 +122,7 @@ namespace PassportService.Services
                 {
                     await AddPassports(batch);
                 }
+                _logger.LogInformation("Работа с CSV файлом завершена!");
             }
             catch(FileNotFoundException ex)
             {
@@ -133,14 +135,14 @@ namespace PassportService.Services
                 throw new Exception($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}", ex);
             }
             //проверяем удаленные записи
-            await _passportService.UpdateDeletedPassportAsync();
+            await _passportRepository.UpdateDeletedPassportAsync();
         }
 
 
         public async Task AddPassports(IEnumerable<Passport> newPassports)
         {
             List<Passport> newPassportsForAdd = new List<Passport>();
-            List<Passport>? oldPassports = await _passportService.GetPassportsThatAreInDbAndInCollection(newPassports);
+            List<Passport>? oldPassports = await _passportRepository.GetPassportsThatAreInDbAndInCollection(newPassports);
            
             if(oldPassports == null || !oldPassports.Any()) //если все паспорта новые 
             {
@@ -173,7 +175,7 @@ namespace PassportService.Services
                 passport.CreatedAt.Add(today);
                 passport.DateLastRequest = today;
             }
-            await _passportService.AddPassportsAsync(newPassports);
+            await _passportRepository.AddPassportsAsync(newPassports);
         }
 
         public async Task AddPassportsThatAreInDb(List<Passport> oldPassports)
@@ -189,7 +191,7 @@ namespace PassportService.Services
                     }
                 }             
             }
-            await _passportService.UpdatePassports(oldPassports);// Обновляем объект в контексте
+            await _passportRepository.UpdatePassports(oldPassports);// Обновляем объект в контексте
         }
     }
 }
