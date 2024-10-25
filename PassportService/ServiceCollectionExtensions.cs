@@ -14,11 +14,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPassportRepository, PassportRepository>();
         services.AddScoped<ICsvPassportLoaderService, CsvPassportLoaderService>();
         services.AddHostedService<PassportUpdateService>();
-        ApplyMigrations(services);
+        InitializeDatabase(services);
         return services;
     }
 
-    private static void ApplyMigrations(IServiceCollection services)
+    private static void InitializeDatabase(IServiceCollection services)
     { 
         var serviceProvider = services.BuildServiceProvider();
 
