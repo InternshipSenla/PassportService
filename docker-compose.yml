@@ -1,0 +1,24 @@
+﻿services:
+  passportservice: 
+    build:
+      context: .
+      dockerfile: PassportService/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=PassportService;Username=postgres;Password=mysecretpassword
+    depends_on:
+      - db  # Зависимость от базы данных
+
+  db:
+    image: postgres:latest 
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_DB=PassportService  
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Хранение данных между перезапусками
+
+volumes:
+  postgres_data:
