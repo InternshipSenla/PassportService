@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using PassportService.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using PassportService.Configuration;
 
 namespace PassportService.Tests
 {
@@ -18,15 +20,17 @@ namespace PassportService.Tests
         private Mock<IConfiguration> _configurationMock;
         private Mock<IPassportRepository> _passportRepositoryMock;
         private Mock<ILogger<PassportRepository>> _loggerMock;
-         
+        private Mock<IOptions<CsvFileSettings>> _csvFileSettingsMock;
+
         [SetUp]
         public void Setup()
         {
             _configurationMock = new Mock<IConfiguration>();
             _passportRepositoryMock = new Mock<IPassportRepository>();           
             _loggerMock = new Mock<ILogger<PassportRepository>>();
+            _csvFileSettingsMock = new Mock<IOptions<CsvFileSettings>>();
             _csvPassportLoaderService 
-                = new CsvPassportLoaderService(_passportRepositoryMock.Object, _configurationMock.Object, _loggerMock.Object);
+                = new CsvPassportLoaderService(_csvFileSettingsMock.Object, _passportRepositoryMock.Object, _configurationMock.Object, _loggerMock.Object);
         }
 
         [Test]
