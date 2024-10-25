@@ -24,8 +24,8 @@ public static class ServiceCollectionExtensions
 
         using(var scope = serviceProvider.CreateScope())
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<PassportDbContext>();      
-            dbContext.Database.Migrate();       
+            var dbContext = scope.ServiceProvider.GetRequiredService<PassportDbContext>();              
+            dbContext.Database.EnsureCreated();
         }
     }
 }
