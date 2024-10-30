@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PassportService.Core;
 using PassportService.Infrastructure;
 using PassportService.Services;
@@ -10,10 +11,14 @@ namespace PassportService.Controllers
     public class PassportController :Controller
     {
         private IPassportRepository _passportService;
+        private ICsvPassportLoaderService _cvsPasportService;
+        private PassportDbContext _dbContext;
 
-        public PassportController(IPassportRepository passportService)
+        public PassportController(PassportDbContext dbContext, ICsvPassportLoaderService cvsPasportService, IPassportRepository passportService)
         {
+            _cvsPasportService = cvsPasportService;
             _passportService = passportService;
+            _dbContext = dbContext;
         }
 
         [HttpGet("AllPassports")]
@@ -66,5 +71,27 @@ namespace PassportService.Controllers
 
             return Ok(Results.Json(passports));
         }
+
+        [HttpGet("COUNT")]
+        public async Task<IActionResult> GetPassportCount()
+        {
+            int count = await _dbContext.Passports.CountAsync();            
+            return Ok(count);
+        }
+
+        [HttpGet("GetPassportsFromFileAndAddPassportDb")]
+        public async Task<IActionResult> GetPassportsFromFile()
+        {
+            await _cvsPasportService.LoadPassportsFromCsvAsync();            
+            return Ok();
+        }
+
+        [HttpDelete("ClearDatabaseReset")]
+        public async Task ResetDatabaseAsync()
+        {
+            await _dbContext.Database.EnsureDeletedAsync(); // Удаляет базу данных
+            await _dbContext.Database.EnsureCreatedAsync(); // Пересоздает базу данных
+        }
+
     }
 }

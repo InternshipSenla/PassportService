@@ -2,6 +2,7 @@
 using PassportService.Core;
 using PassportService.Infrastructure;
 using System.Linq;
+using EFCore.BulkExtensions;
 
 namespace PassportService.Services
 {
@@ -89,17 +90,27 @@ namespace PassportService.Services
             await _dbContext.SaveChangesAsync();
         }
 
-        public Task UpdatePassports(List<Passport> passports)
+        public async Task UpdatePassports(List<Passport> passports)
         {
-            _dbContext.UpdateRange(passports);     
-            return _dbContext.SaveChangesAsync();
+            await _dbContext.BulkUpdateAsync(passports);
         }
 
         public async Task AddPassportsAsync(List<Passport> passports)
         {
-            await _dbContext.Passports.AddRangeAsync(passports);
-            await _dbContext.SaveChangesAsync();
+            await _dbContext.BulkInsertAsync(passports);
         }
+
+        //public Task UpdatePassports(List<Passport> passports)
+        //{
+        //    _dbContext.UpdateRange(passports);     
+        //    return _dbContext.SaveChangesAsync();
+        //}
+
+        //public async Task AddPassportsAsync(List<Passport> passports)
+        //{
+        //    await _dbContext.Passports.AddRangeAsync(passports);
+        //    await _dbContext.SaveChangesAsync();
+        //}
 
         public Task<List<Passport>> SerchDeletePassports()
         {

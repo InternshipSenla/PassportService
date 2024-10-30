@@ -1,10 +1,13 @@
 ﻿using CsvHelper;
+using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PassportService.Configuration;
 using PassportService.Core;
 using System.Globalization;
 using System.IO.Compression;
+using System.Linq.Expressions;
+using System.Net.Http.Headers;
 
 namespace PassportService.Services
 {
@@ -22,128 +25,322 @@ namespace PassportService.Services
             _options = options;
         }
 
-        private async Task<string> DownloadCsvFileAsync()
+        private string GetInputValue(HtmlNode formNode, string inputName)
         {
-            string url = _options.Value.CsvZipFileUrl;       
+            var inputNode = formNode.SelectSingleNode($".//input[@name='{inputName}']");
+            return inputNode?.GetAttributeValue("value", string.Empty) ?? string.Empty;
+        }
+
+        //получаю url для загрузки файла, если появилось окно с проверкой на вирус
+        private string? GetDownloadURLAsync(string content) 
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(content);
+            _logger.LogInformation($"Полученный HTML: {content}");
+
+            // Извлекаем ссылку на загрузку из формы
+            var downloadFormNode = doc.DocumentNode.SelectSingleNode("//form[@id='download-form']");
+            if(downloadFormNode != null)
+            {
+                var actionUrl = downloadFormNode.GetAttributeValue("action", string.Empty);
+                var idValue = GetInputValue(downloadFormNode, "id");
+                var exportValue = GetInputValue(downloadFormNode, "export");
+                var confirmValue = GetInputValue(downloadFormNode, "confirm");
+                var uuidValue = GetInputValue(downloadFormNode, "uuid");
+                var atValue = GetInputValue(downloadFormNode, "at");
+
+                var downloadUrl = $"{actionUrl}?id={idValue}&export={exportValue}&confirm={confirmValue}&uuid={uuidValue}&at={atValue}";
+                _logger.LogInformation($"Ссылка на загрузку: {downloadUrl}");
+                return downloadUrl; // Возвращаем ссылку на загрузку
+            }
+            else
+            {
+                _logger.LogError("Ссылка на загрузку не найдена в HTML-ответе.");
+                return null; // Возвращаем null, если ссылка не найдена
+            }
+        }    
+
+        private string? GetFileNameByContentDisposition(ContentDispositionHeaderValue contentDisposition)
+        {
+            string fileName = " "; // Имя по умолчанию
+            string fileExtension = " "; // Значение по умолчанию для расширения
+            try
+            {
+                if(contentDisposition != null && !string.IsNullOrEmpty(contentDisposition.FileName))
+                {
+                    // Извлекаем имя файла и расширение из заголовка
+                    fileName = contentDisposition.FileName.Trim('"');
+                    fileExtension = Path.GetExtension(contentDisposition.FileName);
+                    //fileName = Path.GetFileNameWithoutExtension(fileName);
+                    fileExtension = fileExtension.Trim('"');
+                    // Проверка расширения
+                    if(fileExtension != ".zip" && fileExtension != ".csv")
+                    {
+                        throw new InvalidDataException("Неподдерживаемый формат файла. Должен быть .zip или .csv.");
+                    }
+                } else
+                {
+                    return null;
+                }
+            }
+            catch(Exception ex)
+            {
+                _logger.LogError($"Ошибка при извлечении имени файла: {ex.Message}");
+                throw new Exception($"Ошибка при извлечении имени файла: {ex.Message}");
+            }
+
+            return fileName;
+        }
+
+        //получаю путь к загруженному файлу
+        private async Task<string> GetPathToDownloadFileAsync()
+        {
+            string url = _options.Value.CsvZipFileUrl;
             using(var httpClient = new HttpClient())
             {
                 var response = await httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-                var tempFilePath = Path.GetTempFileName(); 
+                // Получаем заголовки ответа
+                var contentDisposition = response.Content.Headers.ContentDisposition;
 
+                string? fileName = GetFileNameByContentDisposition(contentDisposition); 
+                var content = await response.Content.ReadAsStringAsync();
+
+                // Если получен HTML - значит страница с проверкой на вирусы
+                if(content.Contains("<html>"))
+                {
+                    url = GetDownloadURLAsync(content);
+                    if(url == null) return null; // Если не удалось получить URL, возвращаем null
+                    // Выполняем повторный запрос для загрузки файла
+                    response = await httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
+                    contentDisposition = response.Content.Headers.ContentDisposition;
+                    fileName = GetFileNameByContentDisposition(contentDisposition);
+
+                }               
+                string fileExtension = Path.GetExtension(fileName);
+                //fileName = Path.GetFileNameWithoutExtension(fileName);
+                fileExtension = fileExtension.Trim('"');
+
+                // Создаем временный файл с правильным расширением
+                var tempFilePath = Path.Combine(Path.GetTempPath(), $"{fileName}{fileExtension}");
                 await using(var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     await response.Content.CopyToAsync(fileStream);
                 }
-
-                return tempFilePath; 
+             
+                return tempFilePath;
             }
         }
 
+        //распаковываю загруженный файл
         public async Task<string> UnpackingCSVFile()
         {
-            string pathToZipFile = await DownloadCsvFileAsync();          
-            string pathToCSVFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(pathToCSVFolder);
-            try
+            string pathToZipFile = await GetPathToDownloadFileAsync();
+            string  fileExtension = Path.GetExtension(pathToZipFile);
+            if(fileExtension.Equals(".csv"))
             {
-                _logger.LogInformation("Распаковка файла!");
-                ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
-                //находим наш файл, который был созданы последним
-                string? pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv")
-                                    .OrderByDescending(f => File.GetLastWriteTime(f))
-                                    .FirstOrDefault();
-                if(string.IsNullOrEmpty(pathToCSVFile))
+                return pathToZipFile;
+            }
+            else if(fileExtension.Equals(".zip"))
+            {
+                string pathToCSVFolder = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+                Directory.CreateDirectory(pathToCSVFolder);                
+                try
                 {
-                    throw new FileNotFoundException();
+                    _logger.LogInformation("Распаковка файла!");
+                    ZipFile.ExtractToDirectory(pathToZipFile, pathToCSVFolder, true);
+
+                    // Находим наш файл, который был создан последним
+                    string? pathToCSVFile = Directory.GetFiles(pathToCSVFolder, "*.csv")
+                                                        .OrderByDescending(f => File.GetLastWriteTime(f))
+                                                        .FirstOrDefault();
+
+                    if(string.IsNullOrEmpty(pathToCSVFile))
+                    {
+                        throw new FileNotFoundException();
+                    }
+
+                    _logger.LogInformation("Файл успешно распакован!");
+                    return pathToCSVFile;
                 }
-                _logger.LogInformation("Файл успешно распакован!");
-                return pathToCSVFile;
-            }
-            catch(FileNotFoundException)
+                catch(FileNotFoundException)
+                {
+                    _logger.LogError("CVS-файл не найден в распакованной папке.", pathToZipFile);
+                    throw new FileNotFoundException("CVS-файл не найден в распакованной папке.", pathToZipFile);
+                }
+                catch(InvalidDataException ex)
+                {
+                    _logger.LogError($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
+                    throw new InvalidDataException($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
+                }
+                catch(IOException ex)
+                {
+                    _logger.LogError($"Ошибка ввода-вывода: {ex.Message}");
+                    throw new IOException($"Ошибка ввода-вывода: {ex.Message}");
+                }
+                catch(Exception ex)
+                {
+                    _logger.LogError($"Общая ошибка при разархивации: {ex.Message}");
+                    throw new Exception($"Общая ошибка при разархивации: {ex.Message}");
+                }
+            } else
             {
-                _logger.LogError("ZIP-файл или CVS-файл в распакованной папке не найден.", pathToZipFile);
-                throw new FileNotFoundException("ZIP-файл или CVS-файл в распакованной папке не найден.", pathToZipFile);
-            }
-            catch(InvalidDataException ex)
-            {
-                _logger.LogError($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
-                throw new InvalidDataException($"Ошибка: файл не является допустимым ZIP-файлом. {ex.Message}");
-            }
-            catch(IOException ex)
-            {
-                _logger.LogError($"Ошибка ввода-вывода: {ex.Message}");
-                throw new IOException($"Ошибка ввода-вывода: {ex.Message}");
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError($"Общая ошибка при разархивации: {ex.Message}");
-                throw new Exception($"Общая ошибка при разархивации: {ex.Message}");
+                throw new Exception($"Файл не имеет нужного расширения {fileExtension}");
             }
         }
+
+        //public async Task LoadPassportsFromCsvAsync()
+        //{
+        //    string pathToCSVFile = await UnpackingCSVFile();
+
+        //    var passports = new List<Passport>();
+        //    const int batchSize = 20000;
+        //    var batch = new List<Passport>(batchSize);        
+
+        //    int count = 0;
+
+        //    try
+        //    {
+        //        _logger.LogInformation("Работа с CSV файлом!");
+        //        using(var reader = new StreamReader(pathToCSVFile))
+        //        using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+        //        {
+        //            await foreach(var record in csv.GetRecordsAsync<PassportCsvModel>())
+        //            {
+        //                var passport = new Passport
+        //                {
+        //                    Series = record.PASSP_SERIES,
+        //                    Number = record.PASSP_NUMBER
+        //                };
+        //                batch.Add(passport);
+
+        //                if(batch.Count >= batchSize)
+        //                {                      
+        //                   await AddPassports(batch.ToList());
+        //                   batch.Clear();
+        //                   count += batchSize;
+        //                   Console.WriteLine(count);
+        //                }
+        //            }
+        //        }
+
+        //        // Обработка оставшихся паспортов, если они есть
+        //        if(batch.Count > 0)
+        //        {                   
+        //            await AddPassports(batch.ToList());                   
+        //            count += batch.Count; // Здесь нужно учитывать именно количество оставшихся
+        //            Console.WriteLine(count);
+        //        }            
+        //        _logger.LogInformation("Работа с CSV файлом завершена!");
+        //    }
+        //    catch(FileNotFoundException ex)
+        //    {
+        //        _logger.LogError($"Ошибка: CSV файл не найден. Путь: {ex.FileName}");
+        //        throw new FileNotFoundException($"Ошибка: CSV файл не найден. Путь: {ex.FileName}");
+        //    }
+        //    catch(Exception ex)
+        //    {
+        //        _logger.LogError($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}");
+        //        throw new Exception($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}");
+        //    }
+
+        //    // Проверяем удаленные записи
+        //    // await _passportRepository.UpdateDeletedPassportAsync();
+        //}
 
         public async Task LoadPassportsFromCsvAsync()
         {
-
             string pathToCSVFile = await UnpackingCSVFile();
 
             var passports = new List<Passport>();
-            const int batchSize = 1000; // Размер партии для добавления в БД
+            const int batchSize = 5000;
             var batch = new List<Passport>(batchSize);
+
+            // Создаем семафор с лимитом на количество одновременных задач
+            using var semaphore = new SemaphoreSlim(4); 
+
+            int count = 0;
 
             try
             {
                 _logger.LogInformation("Работа с CSV файлом!");
                 using(var reader = new StreamReader(pathToCSVFile))
+                using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
                 {
-                    using(var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+                    await foreach(var record in csv.GetRecordsAsync<PassportCsvModel>())
                     {
-                        await foreach(var record in csv.GetRecordsAsync<PassportCsvModel>())
+                        var passport = new Passport
                         {
-                            var passport = new Passport
-                            {
-                                Series = record.PASSP_SERIES,
-                                Number = record.PASSP_NUMBER                                                        
-                            };
-                            batch.Add(passport);
+                            Series = record.PASSP_SERIES,
+                            Number = record.PASSP_NUMBER
+                        };
+                        batch.Add(passport);
 
-                            // Добавляем записи в БД
-                            if(batch.Count >= batchSize)
+                        if(batch.Count >= batchSize)
+                        {
+                            // Ожидаем освобождения семафора перед добавлением паспортов
+                            await semaphore.WaitAsync();
+                            try
                             {
-                                await AddPassports(batch);
-                                batch.Clear();
+                                var batchSemafore = batch.ToList();
+                                await AddPassports(batchSemafore);
+                            }
+                            finally
+                            {
+                                semaphore.Release();
+                            }                            
+                            batch.Clear();
+                            count += batchSize;
+                            Console.WriteLine(count);
+                            if(count >= 500000)
+                            {
+                                GC.Collect();
+                                count = 0;
                             }
                         }
                     }
                 }
-                // Добавляем оставшиеся записи, если они есть
+
+                // Обработка оставшихся паспортов, если они есть
                 if(batch.Count > 0)
                 {
-                    await AddPassports(batch);
+                    // Ожидаем освобождения семафора перед добавлением паспортов
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        await AddPassports(batch.ToList());
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                    count += batch.Count; // Здесь нужно учитывать именно количество оставшихся
+                    Console.WriteLine(count);
                 }
                 _logger.LogInformation("Работа с CSV файлом завершена!");
             }
             catch(FileNotFoundException ex)
             {
                 _logger.LogError($"Ошибка: CSV файл не найден. Путь: {ex.FileName}");
-                throw new FileNotFoundException($"Ошибка: CSV файл не найден. Путь: {ex.FileName}", ex);
+                throw new FileNotFoundException($"Ошибка: CSV файл не найден. Путь: {ex.FileName}");
             }
             catch(Exception ex)
             {
-                _logger.LogError($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}", ex);
-                throw new Exception($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}", ex);
+                _logger.LogError($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}");
+                throw new Exception($"Произошла непредвиденная ошибка при работе с CSV файлом: {ex.Message}");
             }
-            //проверяем удаленные записи
-            await _passportRepository.UpdateDeletedPassportAsync();
-        }
 
+            // Проверяем удаленные записи
+            // await _passportRepository.UpdateDeletedPassportAsync();
+        }
 
         public async Task AddPassports(IEnumerable<Passport> newPassports)
         {
             List<Passport> newPassportsForAdd = new List<Passport>();
             List<Passport>? oldPassports = await _passportRepository.GetPassportsThatAreInDbAndInCollection(newPassports);
-           
+
             if(oldPassports == null || !oldPassports.Any()) //если все паспорта новые 
             {
                 await AddNewPassportsInDb(newPassports.ToList());                
@@ -168,12 +365,9 @@ namespace PassportService.Services
         {
             foreach(Passport passport in newPassports)
             {
-                if(passport.CreatedAt == null)
-                {
-                    passport.CreatedAt = new List<DateTime>();
-                }
-                passport.CreatedAt.Add(today);
-                passport.DateLastRequest = today;
+                passport.CreatedAt ??= new List<DateTime>(); // Используется оператор ??= для присвоения нового списка только если CreatedAt равен null
+                passport.CreatedAt.Add(today);               // Добавляем сегодняшнюю дату
+                passport.DateLastRequest = today;            // Обновляем дату последнего запроса
             }
             await _passportRepository.AddPassportsAsync(newPassports);
         }
