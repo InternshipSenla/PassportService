@@ -2,7 +2,7 @@
 {
     public class PassportCsvModel
     {
-        public int PASSP_SERIES { get; set; }
-        public int PASSP_NUMBER { get; set; }
+        public string? PASSP_SERIES { get; set; }
+        public string? PASSP_NUMBER { get; set; }
     }
 }

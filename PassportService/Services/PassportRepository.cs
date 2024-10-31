@@ -1,19 +1,20 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using EFCore.BulkExtensions;
+using Microsoft.EntityFrameworkCore;
 using PassportService.Core;
 using PassportService.Infrastructure;
-using System.Linq;
-using EFCore.BulkExtensions;
 
 namespace PassportService.Services
 {
     public class PassportRepository :IPassportRepository
     {
-        public DateTime today = DateTime.UtcNow;     
+        public DateTime today = DateTime.UtcNow;
         private PassportDbContext _dbContext;
+        DbContextOptions<PassportDbContext> _options;
 
-        public PassportRepository( PassportDbContext dbContext)
-        {          
-            _dbContext = dbContext;        
+        public PassportRepository(DbContextOptions<PassportDbContext> options, PassportDbContext dbContext)
+        {
+            _options = options;
+            _dbContext = dbContext;
         }
 
         public Task<List<Passport>> GetAllPassports()
@@ -21,36 +22,36 @@ namespace PassportService.Services
             return _dbContext.Passports.ToListAsync();
         }
 
-        public Task<List<Passport>> GetPassportsByNumber(int Number)
-        {       
-            return _dbContext.Passports
-             .Where(p => p.Number == Number)
-             .ToListAsync();
-        }
-
-        public Task<List<Passport>> GetPassportsBySeries(int Series)
+        public Task<List<Passport>> GetPassportsByNumber(string Number)
         {
             return _dbContext.Passports
-                 .Where(p => p.Series == Series)
-                 .ToListAsync();
+                .Where(p => p.Number == Number)
+                .ToListAsync();
         }
 
-        public Task<List<Passport>> GetInactivePassportsBySeries(int Series)
+        public Task<List<Passport>> GetPassportsBySeries(string Series)
         {
             return _dbContext.Passports
-                    .Where(p => p.Series == Series &&
-                        (p.RemovedAt == null || !p.RemovedAt.Any()
-                        || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
-                    ).ToListAsync();
+                .Where(p => p.Series == Series)
+                .ToListAsync();
         }
 
-        public Task<List<Passport>> GetInactivePassportsByNumber(int Number)
+        public Task<List<Passport>> GetInactivePassportsBySeries(string Series)
         {
             return _dbContext.Passports
-                  .Where(p => p.Number == Number &&
-                     (p.RemovedAt == null || !p.RemovedAt.Any()
-                     || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
-                 ).ToListAsync();
+                .Where(p => p.Series == Series &&
+                    (p.RemovedAt == null || !p.RemovedAt.Any()
+                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
+                ).ToListAsync();
+        }
+
+        public Task<List<Passport>> GetInactivePassportsByNumber(string Number)
+        {
+            return _dbContext.Passports
+                .Where(p => p.Number == Number &&
+                    (p.RemovedAt == null || !p.RemovedAt.Any()
+                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
+                ).ToListAsync();
         }
 
         public async Task<List<Passport>> GetPassportsByDate(DateTime date)
@@ -64,22 +65,20 @@ namespace PassportService.Services
             return passportsByDate;
         }
 
-        public  Task<Passport?> GetPassportAsync(Passport passport)
-        {           
+        public Task<Passport?> GetPassportAsync(Passport passport)
+        {
             return _dbContext.Passports
                .Where(existing => existing.Series == passport.Series && existing.Number == passport.Number).FirstOrDefaultAsync(); ;
         }
 
         public async Task<List<Passport>?> GetPassportsThatAreInDbAndInCollection(IEnumerable<Passport> passports)
         {
-            var seriesNumbers = passports
-                .Select(p => p.Series + p.Number)
-                .ToList();
+            using var dbContext = new PassportDbContext(_options);
+            var seriesNumbers = new HashSet<string>(passports.Select(p => p.Series + p.Number));
 
-           // Выполняем запрос к базе данных, чтобы получить уже существующие паспорта
-           var existingPassports = await _dbContext.Passports
-               .Where(p => seriesNumbers.Contains(p.Series + p.Number))
-               .ToListAsync();         
+            var existingPassports = await dbContext.Passports
+                .Where(p => seriesNumbers.Contains(p.Series + p.Number))
+                .ToListAsync();
 
             return existingPassports;
         }
@@ -92,25 +91,26 @@ namespace PassportService.Services
 
         public async Task UpdatePassports(List<Passport> passports)
         {
-            await _dbContext.BulkUpdateAsync(passports);
+            using var dbContext = new PassportDbContext(_options);
+            await dbContext.BulkUpdateAsync(passports);
         }
 
-        public async Task AddPassportsAsync(List<Passport> passports)
+        public async Task<bool> AddPassportsAsync(List<Passport> passports)
         {
-            await _dbContext.BulkInsertAsync(passports);
+            using var dbContext = new PassportDbContext(_options);
+            //await dbContext.BulkInsertAsync(passports);           
+            try
+            {
+                // Пытаемся выполнить массовое добавление всех паспортов
+                await dbContext.BulkInsertAsync(passports);
+            }
+            catch(Npgsql.PostgresException ex) when(ex.SqlState == "23505")
+            {
+                // Если есть дубликаты, возвращаем false               
+                return false;
+            }
+            return true;
         }
-
-        //public Task UpdatePassports(List<Passport> passports)
-        //{
-        //    _dbContext.UpdateRange(passports);     
-        //    return _dbContext.SaveChangesAsync();
-        //}
-
-        //public async Task AddPassportsAsync(List<Passport> passports)
-        //{
-        //    await _dbContext.Passports.AddRangeAsync(passports);
-        //    await _dbContext.SaveChangesAsync();
-        //}
 
         public Task<List<Passport>> SerchDeletePassports()
         {
@@ -123,20 +123,82 @@ namespace PassportService.Services
                  .ToListAsync();
         }
 
-        public async Task UpdateDeletedPassportAsync()
+        public async Task UpdateDeletedPassportTasks()
         {
-            var passportsToDelete = await SerchDeletePassports();
+            const int pageSize = 20000;
+            int? lastProcessedId = null;
+            bool hasMoreRecords = true;
+            int semaforeCount = 4;
+            using var semaphore = new SemaphoreSlim(semaforeCount);
+            var tasks = new List<Task>();
+            var query = _dbContext.Passports
+                 .Where(passport =>
+                     !passport.DateLastRequest.Date.Equals(today.Date) &&
+                     (passport.RemovedAt == null ||
+                      passport.RemovedAt.Any() &&
+                      passport.CreatedAt.Max() > passport.RemovedAt.Max()));
 
-            foreach(var passportWasDelete in passportsToDelete)
+            while(hasMoreRecords)
             {
-                if(passportWasDelete.RemovedAt == null)
+                query = _dbContext.Passports
+                 .Where(passport =>
+                     !passport.DateLastRequest.Date.Equals(today.Date) &&
+                     (passport.RemovedAt == null ||
+                      passport.RemovedAt.Any() &&
+                      passport.CreatedAt.Max() > passport.RemovedAt.Max()));
+
+                // Если lastProcessedId уже задан, выбираем только записи с Id больше него
+                if(lastProcessedId.HasValue)
                 {
-                    passportWasDelete.RemovedAt = new List<DateTime?>();
+                    query = query.Where(p => p.Id > lastProcessedId.Value);
                 }
-                // Добавляем текущую дату в коллекцию
-                passportWasDelete.RemovedAt.Add(today);
+
+                // Получаем очередной пакет данных
+                var passportsBatch = await query
+                    .OrderBy(p => p.Id) // упорядочивание для последовательной выборки
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                if(passportsBatch.Count == 0)
+                {
+                    hasMoreRecords = false;
+                    break;
+                }
+
+                await semaphore.WaitAsync();
+
+                var task = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Обрабатываем данные
+                        await UpdateDeletedPassports(passportsBatch);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
+                tasks.Add(task);
+
+                // Устанавливаем последний обработанный Id для следующего цикла
+                lastProcessedId = passportsBatch.Last().Id;
             }
-            await _dbContext.SaveChangesAsync();
+            await Task.WhenAll(tasks);
+        }
+
+        private async Task UpdateDeletedPassports(List<Passport> passportsBatch)
+        {
+            foreach(var passport in passportsBatch)
+            {
+                if(passport.RemovedAt == null)
+                {
+                    passport.RemovedAt = new List<DateTime?>();
+                }
+                passport.RemovedAt.Add(today);
+            }
+            await UpdatePassports(passportsBatch);
         }
     }
 }
