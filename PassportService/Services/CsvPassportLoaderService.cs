@@ -242,7 +242,7 @@ namespace PassportService.Services
 
             // Проверяем удаленные записи
             await _passportRepository.UpdateDeletedPassportTasks();
-        }  
+        }
 
         public async Task AddPassports(IEnumerable<Passport> newPassports)
         {
@@ -298,7 +298,6 @@ namespace PassportService.Services
                     await _passportRepository.AddPassportsAsync(newPassportsForAdd);
                 }
                 await AddPassportsThatAreInDb(oldPassports);
-
             }
         }
 

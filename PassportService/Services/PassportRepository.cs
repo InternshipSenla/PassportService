@@ -97,8 +97,7 @@ namespace PassportService.Services
 
         public async Task<bool> AddPassportsAsync(List<Passport> passports)
         {
-            using var dbContext = new PassportDbContext(_options);
-            //await dbContext.BulkInsertAsync(passports);           
+            using var dbContext = new PassportDbContext(_options);        
             try
             {
                 // Пытаемся выполнить массовое добавление всех паспортов

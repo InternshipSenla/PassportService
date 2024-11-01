@@ -10,24 +10,13 @@ namespace PassportService.Controllers
     [ApiController]
     public class PassportController :Controller
     {
-        private IPassportRepository _passportService;
-        private ICsvPassportLoaderService _cvsPasportService;
-        private PassportDbContext _dbContext;
+        private IPassportRepository _passportService;   
 
-        public PassportController(PassportDbContext dbContext, ICsvPassportLoaderService cvsPasportService, IPassportRepository passportService)
-        {
-            _cvsPasportService = cvsPasportService;
-            _passportService = passportService;
-            _dbContext = dbContext;
+        public PassportController(IPassportRepository passportService)
+        {            
+            _passportService = passportService;           
         }
-
-        [HttpGet("AllPassports")]
-        public async Task<IActionResult> GetAllPassports()
-        {
-            List<Passport> passports = await _passportService.GetAllPassports();
-            return Ok(Results.Json(passports));
-        }
-
+     
         [HttpGet("GetPassportsBySeries/{Series}")]
         public async Task<IActionResult> GetPassportsBySeries(string Series)
         {
@@ -71,27 +60,5 @@ namespace PassportService.Controllers
 
             return Ok(Results.Json(passports));
         }
-
-        [HttpGet("COUNT")]
-        public async Task<IActionResult> GetPassportCount()
-        {
-            int count = await _dbContext.Passports.CountAsync();            
-            return Ok(count);
-        }
-
-        [HttpGet("GetPassportsFromFileAndAddPassportDb")]
-        public async Task<IActionResult> GetPassportsFromFile()
-        {
-            await _cvsPasportService.LoadPassportsFromCsvAsync();            
-            return Ok();
-        }
-
-        [HttpDelete("ClearDatabaseReset")]
-        public async Task ResetDatabaseAsync()
-        {
-            await _dbContext.Database.EnsureDeletedAsync(); // Удаляет базу данных
-            await _dbContext.Database.EnsureCreatedAsync(); // Пересоздает базу данных
-        }
-
     }
 }
