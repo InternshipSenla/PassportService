@@ -1,4 +1,5 @@
-﻿using PassportService.Core;
+﻿using Microsoft.AspNetCore.Mvc;
+using PassportService.Core;
 
 namespace PassportService.Services
 {
@@ -6,11 +7,8 @@ namespace PassportService.Services
     {
         Task<bool> AddPassportsAsync(List<Passport> passports);   
         Task UpdatePassports(List<Passport> passport);
-        Task<List<Passport>> GetAllPassports();
-        Task<List<Passport>> GetPassportsBySeries(string Series);
-        Task<List<Passport>> GetPassportsByNumber(string Number);
-        Task<List<Passport>> GetInactivePassportsBySeries(string Series);
-        Task<List<Passport>> GetInactivePassportsByNumber(string Number);
+        Task<List<Passport>> GetPassportsBySeriesAndNumber(string series, string number);
+        Task<List<Passport>> GetInactivePassportsBySeriesAndNumber(string series, string number);
         Task<List<Passport>> GetPassportsByDate(DateTime date);
         Task UpdateDeletedPassportTasks();
         Task<List<Passport>?> GetPassportsThatAreInDbAndInCollection(IEnumerable<Passport> passports);

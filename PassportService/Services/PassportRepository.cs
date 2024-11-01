@@ -17,40 +17,19 @@ namespace PassportService.Services
             _dbContext = dbContext;
         }
 
-        public Task<List<Passport>> GetAllPassports()
+        public async Task<List<Passport>> GetPassportsBySeriesAndNumber(string series, string number)
         {
-            return _dbContext.Passports.ToListAsync();
-        }
-
-        public Task<List<Passport>> GetPassportsByNumber(string Number)
-        {
-            return _dbContext.Passports
-                .Where(p => p.Number == Number)
+            return await _dbContext.Passports
+                .Where(p => p.Series == series && p.Number == number)
                 .ToListAsync();
         }
 
-        public Task<List<Passport>> GetPassportsBySeries(string Series)
+        public Task<List<Passport>> GetInactivePassportsBySeriesAndNumber(string series, string number)
         {
             return _dbContext.Passports
-                .Where(p => p.Series == Series)
-                .ToListAsync();
-        }
-
-        public Task<List<Passport>> GetInactivePassportsBySeries(string Series)
-        {
-            return _dbContext.Passports
-                .Where(p => p.Series == Series &&
+                .Where(p => p.Series == series && p.Number == number &&
                     (p.RemovedAt == null || !p.RemovedAt.Any()
-                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
-                ).ToListAsync();
-        }
-
-        public Task<List<Passport>> GetInactivePassportsByNumber(string Number)
-        {
-            return _dbContext.Passports
-                .Where(p => p.Number == Number &&
-                    (p.RemovedAt == null || !p.RemovedAt.Any()
-                    || p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max())
+                    || (p.CreatedAt.Any() && p.CreatedAt.Max() > p.RemovedAt.Max()))
                 ).ToListAsync();
         }
 
@@ -65,12 +44,6 @@ namespace PassportService.Services
             return passportsByDate;
         }
 
-        public Task<Passport?> GetPassportAsync(Passport passport)
-        {
-            return _dbContext.Passports
-               .Where(existing => existing.Series == passport.Series && existing.Number == passport.Number).FirstOrDefaultAsync(); ;
-        }
-
         public async Task<List<Passport>?> GetPassportsThatAreInDbAndInCollection(IEnumerable<Passport> passports)
         {
             using var dbContext = new PassportDbContext(_options);
@@ -83,12 +56,6 @@ namespace PassportService.Services
             return existingPassports;
         }
 
-        public async Task UpdatePassport(Passport passport)
-        {
-            _dbContext.Update(passport);
-            await _dbContext.SaveChangesAsync();
-        }
-
         public async Task UpdatePassports(List<Passport> passports)
         {
             using var dbContext = new PassportDbContext(_options);
@@ -97,7 +64,7 @@ namespace PassportService.Services
 
         public async Task<bool> AddPassportsAsync(List<Passport> passports)
         {
-            using var dbContext = new PassportDbContext(_options);        
+            using var dbContext = new PassportDbContext(_options);
             try
             {
                 // Пытаемся выполнить массовое добавление всех паспортов
@@ -109,17 +76,6 @@ namespace PassportService.Services
                 return false;
             }
             return true;
-        }
-
-        public Task<List<Passport>> SerchDeletePassports()
-        {
-            return _dbContext.Passports
-                 .Where(passport =>
-                     !passport.DateLastRequest.Date.Equals(today.Date) &&
-                     (passport.RemovedAt == null ||
-                     passport.RemovedAt.Any() &&
-                     passport.CreatedAt.Max() > passport.RemovedAt.Max()))
-                 .ToListAsync();
         }
 
         public async Task UpdateDeletedPassportTasks()
