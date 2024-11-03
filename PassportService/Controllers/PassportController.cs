@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PassportService.Core;
-using PassportService.Infrastructure;
 using PassportService.Services;
 
 namespace PassportService.Controllers
@@ -16,44 +15,23 @@ namespace PassportService.Controllers
             _passportService = passportService;
         }
 
-        [HttpGet("AllPassports")]
-        public async Task<IActionResult> GetAllPassports()
+        [HttpGet("GetPassportsBySeriesAndNumber/{series}/{number}")]
+        public async Task<IActionResult> GetPassportsBySeriesAndNumber(string series, string number)
         {
-            List<Passport> passports = await _passportService.GetAllPassports();
+            List<Passport> passports = await _passportService.GetPassportsBySeriesAndNumber(series, number);
             return Ok(Results.Json(passports));
         }
 
-        [HttpGet("GetPassportsBySeries/{Series}")]
-        public async Task<IActionResult> GetPassportsBySeries(int Series)
+        [HttpGet("GetInactivePassportsBySeriesAndNumber/{series}/{number}")]
+        public async Task<IActionResult> GetInactivePassportsBySeriesAndNumber(string series, string number)
         {
-            List<Passport> passports = await _passportService.GetPassportsBySeries(Series);
+            List<Passport> passports = await _passportService.GetInactivePassportsBySeriesAndNumber(series, number);
             return Ok(Results.Json(passports));
         }
-
-        [HttpGet("GetPassportsByNumber/{Number}")]
-        public async Task<IActionResult> GetPassportsByNumber(int Number)
-        {
-            List<Passport> passports = await _passportService.GetPassportsByNumber(Number);
-            return Ok(Results.Json(passports));
-        }
-
-        [HttpGet("GetInactivePassportsBySeries/{Series}")]
-        public async Task<IActionResult> GetInactivePassportsBySeries(int Series)
-        {
-            List<Passport> passports = await _passportService.GetInactivePassportsBySeries(Series);
-            return Ok(Results.Json(passports));
-        }
-
-        [HttpGet("GetInactivePassportsByNumber/{Number}")]
-        public async Task<IActionResult> GetInactivePassportsByNumber(int Number)
-        {
-            List<Passport> passports = await _passportService.GetInactivePassportsByNumber(Number);
-            return Ok(Results.Json(passports));
-        }            
 
         [HttpGet("GetPassportsByDate/{date}")]
         public async Task<IActionResult> GetPassportsByDate(DateTime date)
-        {          
+        {
             // Преобразуем дату в UTC
             DateTime utcDate = DateTime.SpecifyKind(date, DateTimeKind.Utc);
 

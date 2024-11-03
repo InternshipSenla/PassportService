@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="33.0.1" />
+    <PackageReference Include="EFCore.BulkExtensions" Version="8.1.1" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.70" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
